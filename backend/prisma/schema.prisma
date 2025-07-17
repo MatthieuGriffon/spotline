@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  hashedPwd   String
+  pseudo      String
+  imageUrl    String?       // avatar
+  isConfirmed Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  groups      GroupMember[]
+  prises      Prise[]
+  sessions    Session[]   @relation("OrganisateurSessions")
+  invites     SessionInvite[]
+  tokens      EmailConfirmationToken[]
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  members     GroupMember[]
+  prises      Prise[]
+  sessions    Session[]
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  group     Group    @relation(fields: [groupId], references: [id])
+  groupId   String
+  role      GroupRole
+  joinedAt  DateTime @default(now())
+
+  @@unique([userId, groupId])
+}
+
+enum GroupRole {
+  admin
+  member
+  guest
+}
+
+model Prise {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  group       Group?   @relation(fields: [groupId], references: [id])
+  groupId     String?
+
+  photoUrl    String
+  espece      String
+  materiel    String?
+  date        DateTime
+  description String?
+
+  latitude    Float
+  longitude   Float
+  visibility  Visibility
+
+  createdAt   DateTime  @default(now())
+}
+
+model Session {
+  id           String     @id @default(cuid())
+  title        String
+  description  String?
+  date         DateTime
+  latitude     Float
+  longitude    Float
+
+  group        Group      @relation(fields: [groupId], references: [id])
+  groupId      String
+  organizer    User       @relation("OrganisateurSessions", fields: [organizerId], references: [id])
+  organizerId  String
+
+  invites      SessionInvite[]
+
+  createdAt    DateTime   @default(now())
+}
+
+model SessionInvite {
+  id          String   @id @default(cuid())
+  session     Session  @relation(fields: [sessionId], references: [id])
+  sessionId   String
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  response    Response?
+  respondedAt DateTime?
+
+  @@unique([sessionId, userId])
+}
+
+enum Response {
+  yes
+  no
+  maybe
+}
+
+model EmailConfirmationToken {
+  id         String   @id @default(cuid())
+  token      String   @unique
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+}
+
+enum Visibility {
+  public
+  private
+  group
+}

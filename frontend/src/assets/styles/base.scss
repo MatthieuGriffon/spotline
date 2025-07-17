@@ -1,0 +1,21 @@
+@use './foundations/reset.scss';
+@use './foundations/fonts.scss' as *;
+@use './foundations/variables.scss' as *;
+
+
+
+/* === Variables === */
+:root {
+  --color-background: #fff;
+  --color-text: #222;
+}
+
+
+/* === Styles globaux === */
+body {
+  font-family: 'Quicksand', sans-serif;
+  color: var(--color-text);
+  background-color: var(--color-background);
+  line-height: 1.6;
+  font-size: 15px;
+}
