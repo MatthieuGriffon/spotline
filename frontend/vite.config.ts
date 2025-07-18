@@ -15,4 +15,14 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
+   css: {
+    preprocessorOptions: {
+      scss: {
+        additionalData: `
+          @use "@/assets/styles/foundations/variables.scss" as *;
+          @use "@/assets/styles/foundations/_breakpoint.scss" as *;
+        `
+      }
+    },
+  }
 })

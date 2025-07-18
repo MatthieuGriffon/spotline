@@ -1,0 +1,44 @@
+// === BREAKPOINTS ===
+$breakpoint-mobile-xs: 320px;
+$breakpoint-mobile-sm: 415px;
+$breakpoint-mobile-md: 480px;
+$breakpoint-tablet-fold: 712px;
+$breakpoint-tablet: 768px;
+$breakpoint-tablet-lg: 950px;
+$breakpoint-laptop-sm: 1366px;
+$breakpoint-laptop: 1440px;
+$breakpoint-hd: 1600px;
+$breakpoint-fullhd: 1920px;
+$breakpoint-qhd: 2560px;
+$breakpoint-4k: 3440px;
+
+// === MIXIN UTILE ===
+@mixin respond($breakpoint) {
+  @if $breakpoint == mobile-xs {
+    @media (min-width: $breakpoint-mobile-xs) { @content; }
+  } @else if $breakpoint == mobile-sm {
+    @media (min-width: $breakpoint-mobile-sm) { @content; }
+  } @else if $breakpoint == mobile-md {
+    @media (min-width: $breakpoint-mobile-md) { @content; }
+  } @else if $breakpoint == tablet-fold {
+    @media (min-width: $breakpoint-tablet-fold) { @content; }
+  } @else if $breakpoint == tablet {
+    @media (min-width: $breakpoint-tablet) { @content; }
+  } @else if $breakpoint == tablet-lg {
+    @media (min-width: $breakpoint-tablet-lg) { @content; }
+  } @else if $breakpoint == laptop-sm {
+    @media (min-width: $breakpoint-laptop-sm) { @content; }
+  } @else if $breakpoint == laptop {
+    @media (min-width: $breakpoint-laptop) { @content; }
+  } @else if $breakpoint == hd {
+    @media (min-width: $breakpoint-hd) { @content; }
+  } @else if $breakpoint == fullhd {
+    @media (min-width: $breakpoint-fullhd) { @content; }
+  } @else if $breakpoint == qhd {
+    @media (min-width: $breakpoint-qhd) { @content; }
+  } @else if $breakpoint == 4k {
+    @media (min-width: $breakpoint-4k) { @content; }
+  } @else {
+    @warn "⚠️ Breakpoint `#{$breakpoint}` non reconnu.";
+  }
+}
