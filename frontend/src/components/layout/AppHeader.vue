@@ -86,8 +86,8 @@ onMounted(() => {
   position: relative;
   background-color: var(--color-primary);
   padding: var(--space-sm) var(--space-md);
-  border-bottom: 1px solid var(--color-border);
-  height: 6rem;
+ 
+  height: 5.2rem;
   gap: var(--space-md);
   border-bottom-left-radius: var(--radius-lg);
   border-bottom-right-radius: var(--radius-lg);
@@ -99,7 +99,7 @@ onMounted(() => {
   flex-shrink: 0;
 
   .logo {
-    height: 4rem;
+    height: 3rem;
     width: auto;
   }
 }

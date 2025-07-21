@@ -39,12 +39,15 @@ const isActive = (path: string) => route.path.startsWith(path)
   left: 0;
   right: 0;
   height: 4rem;
-  background-color: var(--color-surface);
+  background-color: #d0c6c6;
   border-top: 1px solid var(--color-border);
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: var(--z-footer, 100);
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1); // optionnel pour le flottement doux
 }
 
 .footer-nav {
@@ -71,8 +74,11 @@ const isActive = (path: string) => route.path.startsWith(path)
     color: var(--color-primary);
   }
 
-  &:hover {
-    color: var(--color-text);
-  }
+ &:hover {
+  color: var(--color-primary-hover);
+}
+}
+font-awesome-icon {
+  font-size: 1.25rem;
 }
 </style>

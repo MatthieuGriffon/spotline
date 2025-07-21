@@ -13,6 +13,10 @@
 
 
 /* === Styles globaux === */
+html, body {
+  height: 100%;
+  overflow-x: hidden;
+}
 body {
   font-family: 'Quicksand', sans-serif;
   color: var(--color-text);
