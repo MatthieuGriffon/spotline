@@ -4,7 +4,7 @@ $breakpoint-md: 768px;     // 48rem : tablettes classiques (iPad)
 $breakpoint-lg: 1024px;    // 64rem : laptop standard
 $breakpoint-xl: 1280px;    // 80rem : desktop large
 $breakpoint-2xl: 1536px;   // 96rem : écrans très larges
-$breakpoint-4k: 3440px;    // écran ultra large de ton setup 💻
+$breakpoint-4k: 2000px;    // écran ultra large de ton setup 💻
 
 // === MIXIN UTILE ===
 @mixin respond($breakpoint) {

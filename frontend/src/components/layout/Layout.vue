@@ -17,15 +17,14 @@ import AppFooter from './AppFooter.vue'
 .layout {
   display: flex;
   flex-direction: column;
-  height: 100vh; // très important ici
-  overflow: hidden;
+  min-height: 100vh; // très important ici
 }
 
 .layout-content {
   flex: 1;
-  overflow: hidden;
-  display: flex; // <=== Ajouté pour permettre alignement vertical
+  display: flex; 
   flex-direction: column;
-  margin-top: -2rem;
+  padding-bottom: var(--footer-height);
 }
+
 </style>

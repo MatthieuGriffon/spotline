@@ -56,7 +56,7 @@ watch(() => props.spots, (newSpots) => {
 <style scoped lang="scss">
 .mini-map {
   width: 100%;
-  height: 200px;
+  height: 100%;
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
@@ -65,8 +65,9 @@ watch(() => props.spots, (newSpots) => {
     height: 300px; // 💡 par exemple, tu ajustes à ton goût
   }
 
-  @include respond(hd) {
-    height: 250px; // pour ne pas trop gonfler sur très grand écran
+  @include respond(4k) {
+    height: 2500px; // pour ne pas trop gonfler sur très grand écran
+    width: 1217px;
   }
 }
 </style>

@@ -16,11 +16,13 @@
 html, body {
   height: 100%;
   overflow-x: hidden;
+  background-color: rgb(23, 58, 67);
+;
 }
 body {
   font-family: 'Quicksand', sans-serif;
   color: var(--color-text);
-  background-color: var(--color-background);
+  background-color: rgb(23, 58, 67);
   line-height: 1.6;
   font-size: 15px;
 }

@@ -83,7 +83,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   z-index: var(--z-header); // 100
-  position: relative;
+  position: sticky;
+  top: 0;
   background-color: var(--color-primary);
   padding: var(--space-sm) var(--space-md);
  

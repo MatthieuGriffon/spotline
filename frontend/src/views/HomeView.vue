@@ -2,6 +2,8 @@
 import Layout from '@/components/layout/Layout.vue'
 import PriseSlider from '@/components/layout/home/PriseSlider.vue'
 import MiniMap from '@/components/ui/MiniMap.vue'
+import TopEspecesCard from '@/components/stats/TopEspecesCard.vue'
+
 
 const lastPrises = [
   { id: '1', imageUrl: '/img/demo1.webp', espece: 'Brochet' },
@@ -14,15 +16,22 @@ const mockSpots = [
   { id: 's2', lat: 47.24, lng: -1.53, label: 'Étang des pêcheurs' },
   { id: 's3', lat: 47.23, lng: -1.56, label: 'Bras caché' },
 ]
+
+const topEspeces = [
+  { id: 'brochet', nom: 'Brochet', count: 5, imageUrl: '/img/demo1.webp', espece: 'Brochet' },
+  { id: 'carpe', nom: 'Carpe', count: 3, imageUrl: '/img/demo2.webp', espece: 'Carpe' },
+  { id: 'truite', nom: 'Truite', count: 2, imageUrl: '/img/demo3.jpg', espece: 'Truite' },
+]
 </script>
 
 <template>
   <Layout>
-    <div class="hero-illustration-wrapper">
+    <div class="hero-wrapper">
       <div class="hero-content">
         <div class="hero-illustration">
           <img src="@/assets/images/spotline-central.webp" alt="Scène de pêche" />
         </div>
+
         <div class="hero-text-group">
           <div class="hero-presentation">
             <h1>Bienvenue sur Spotline</h1>
@@ -32,16 +41,25 @@ const mockSpots = [
             </p>
           </div>
 
-        <div class="hero-presentation-secondary">
-  <h2>Dernières prises</h2>
-  <PriseSlider :prises="lastPrises" />
-</div>
+          <div class="hero-presentation-secondary">
+            <h2>Dernières prises</h2>
+            <PriseSlider :prises="lastPrises" />
+          </div>
         </div>
       </div>
-      <div class="hero-map-preview">
-  <h2>Spots partagés récemment</h2>
-  <MiniMap :spots="mockSpots" />
-  <button class="see-more-btn">Voir tous les spots</button>
+
+      <div class="hero-map-section">
+        <div class="hero-bottom">
+  <div class="hero-map-preview">
+    <h2>Spots partagés récemment</h2>
+    <MiniMap :spots="mockSpots" />
+    <button class="see-more-btn" role="button" aria-label="Voir tous les spots">Voir tous les spots</button>
+  </div>
+
+  <div class="hero-map-side-card">
+    <TopEspecesCard :especes="topEspeces" />
+  </div>
+  </div>
 </div>
     </div>
   </Layout>
@@ -49,14 +67,18 @@ const mockSpots = [
 
 <style scoped lang="scss">
 
-.hero-illustration-wrapper {
-  flex: 1;
+.hero-wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-md);
   padding: var(--space-md);
+  gap: var(--space-md);
+  min-height: 100vh;
   background-color: rgb(23, 58, 67);
+  @include respond(2xl) {
+   gap: var(--space-lg);
+  }
+}
 
 .hero-content {
   display: flex;
@@ -64,130 +86,157 @@ const mockSpots = [
   align-items: center;
   gap: var(--space-md);
 
-  @include respond(md) {
-    justify-content: flex-start; // au lieu de center, si jamais c’est trop “flottant”
-  }
-
   @include respond(lg) {
     flex-direction: row;
     align-items: stretch;
     gap: var(--space-xl);
-    margin-top: 4rem;
-    min-height: auto;
+    margin-top: 1rem;
+  }
+    @include respond(xl) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-xl);
+    align-items: stretch;
+    margin-top: 1rem;
+  }
+  @include respond(2xl) {
+   margin-top: 1rem;
+  }
+  @include respond(4k) {
+  .hero-content {
+    max-height: 24rem;
+    align-items: flex-start;
   }
 }
+}
+
+.hero-illustration {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  background-color: #c1bdbd;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 0.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 1rem;
+
+  @include respond(lg) {
+    height: 100%;
+    margin-top: 0;
+  }
+  @include respond(xl) {
+    width: 100%;
+    max-width: 100rem;
+  }
+  @include respond(4k) {
+    max-height: none;
+    padding: 0.25rem;
+  }
+
+  img {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+
+    display: block;
+     @include respond(4k) {
+  object-fit: contain;
+  }
+  }
+}
+
 .hero-text-group {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: var(--space-md); // fallback mobile
   align-items: center;
+  gap: var(--space-md);
 
   @include respond(lg) {
     align-items: stretch;
-    height: 100%; // va s’adapter à la hauteur de la colonne
+    justify-content: space-between;
+    height: 100%;
+  }
+  @include respond(xl) {
+    width: 100%;
+  }
+  @include respond(4k) {
+    justify-content: center;
   }
 }
 
-  .hero-illustration {
-    width: 90%;
-    max-width: 500px;
-  }
-
-  .hero-illustration {
-    background-color: #c1bdbd;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
-    padding: 0.5rem;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    transform: translateY(-3.1rem);
-
-    @include respond(sm) {
-    margin-top:  0rem;
-  }
-
-  @include respond(md) {
-    transform: translateY(3rem); // plus neutre
-  }
-
-  @include respond(lg) {
-    transform: none; // 
-     height: 100%;
-  }
-
-    @include respond(lg) {
-      transform: none;
-      max-width: 600px;
-      padding: 0.5rem;
-    
-    }
-
-    img {
-      width: 100%;
-      height: auto;
-      border-radius: var(--radius-md);
-      object-fit: cover;
-      object-position: center;
-      display: block;
-    }
-  }
-
-  .hero-presentation {
-    margin-top: 6rem;
-    background-color: var(--color-background);
-    border: 6px solid #c1bdbd;
-    border-radius: var(--radius-lg);
-    padding: var(--space-md);
-    box-shadow: var(--shadow-md);
-    text-align: justify;
-
-    @include respond(md) {
-      padding: var(--space-xl);
-      text-align: left;
-
-      h1 {
-        font-size: var(--font-title);
-        margin-bottom: var(--space-md);
-      }
-
-      p {
-        font-size: var(--font-base);
-      }
-    }
-
-    @include respond(lg) {
-      margin-top: 0;
-    }
-
-    h1 {
-      font-size: var(--font-lg);
-      font-weight: 700;
-      margin-bottom: var(--space-sm);
-      color: var(--color-primary);
-    }
-
-    p {
-      font-size: var(--font-sm);
-      color: var(--color-text-muted);
-      line-height: 1.6;
-    }
-  }
-
- .hero-presentation-secondary {
-  display: none; // 🚫 caché par défaut
+.hero-presentation {
+  background-color: var(--color-background);
+  border: 6px solid #c1bdbd;
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-md);
+  text-align: justify;
   width: 100%;
 
+ 
+
+  h1 {
+    font-size: var(--font-lg);
+    font-weight: 700;
+    margin-bottom: var(--space-sm);
+    color: var(--color-primary);
+
+    @include respond(md) {
+      font-size: var(--font-title);
+      margin-bottom: var(--space-md);
+    }
+    @include respond(xl) {
+    font-size: calc(var(--font-title) * 1.1);
+  }
+   @include respond(4k) {
+    font-size: calc(var(--font-title) * 1.8);
+  }
+  
+  }
+
+  p {
+    font-size: var(--font-sm);
+    color: var(--color-text-muted);
+    line-height: 1.6;
+
+    @include respond(md) {
+      font-size: var(--font-base);
+    }
+    @include respond(4k) {
+    font-size: calc(var(--font-title) * 0.9);
+  }
+  }
+  @include respond(xl) {
+  max-width: 100rem;
+  }
+  @include respond(md) {
+    padding: var(--space-xl);
+    text-align: left;
+  }
+  @include respond(4k) {
+     max-height: 20rem;
+    padding: var(--space-lg);
+  }
+}
+
+.hero-presentation-secondary {
+  display: none;
+
   @include respond(lg) {
-    display: block; // ✅ visible à partir de lg
+   display: flex;
+   flex-direction: column;
+justify-content: center;
     background-color: var(--color-background);
     border: 6px solid #c1bdbd;
     border-radius: var(--radius-lg);
     padding: var(--space-md);
-    width: 100%;
     max-width: 1240px;
     box-shadow: var(--shadow-md);
+
     color: var(--color-text-muted);
     font-size: var(--font-base);
     line-height: 1.6;
@@ -206,31 +255,22 @@ const mockSpots = [
   }
 }
 
-  @keyframes fadeInUp {
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-}
 .hero-map-preview {
-   opacity: 0;
-   transform: translateY(1rem);
-   animation: fadeInUp 0.4s ease-out forwards;
-   display: none;
-   margin-bottom: var(--space-xl);
+  display: none;
+  opacity: 0;
+  transform: translateY(1rem);
+  animation: fadeInUp 0.4s ease-out forwards;
 
   @include respond(lg) {
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
-    margin-top: var(--space-lg);
     background-color: var(--color-background);
     border: 6px solid #c1bdbd;
     border-radius: var(--radius-lg);
     padding: var(--space-md);
-    max-width: 1240px;
-    width: 90%;
+    width: 50%;
+    max-height: 21.5rem;
     box-shadow: var(--shadow-md);
 
     h2 {
@@ -249,6 +289,144 @@ const mockSpots = [
       font-size: var(--font-sm);
       cursor: pointer;
     }
+  }
+  @include respond(xl) {
+  max-width: 100rem;
+  max-height: none;
+  }
+  @include respond(4k) {
+    max-height: 24rem;
+  }
+}
+
+.hero-map-section {
+  display: none;
+
+  @include respond(lg) {
+    display: flex;
+    width: 100%;
+    gap: var(--space-xl);
+    justify-content: center;
+    align-items: stretch;
+    margin-top: var(--space-lg);
+  }
+}
+
+.hero-map-side-card {
+  display: none;
+
+  @include respond(lg) {
+    display: block;
+    width: 50%;
+    max-width: 600px;
+    background-color: var(--color-background);
+    border: 6px solid #c1bdbd;
+    border-radius: var(--radius-lg);
+    padding: var(--space-md);
+    box-shadow: var(--shadow-md);
+    height: 100%;
+  }
+  @include respond(xl) {
+  max-width: 100rem;
+}
+@include respond(4k) {
+    max-height: 24rem;
+  }
+}
+
+.hero-bottom {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  width: 100%;
+
+  @include respond(lg) {
+    flex-direction: row;
+    gap: var(--space-xl);
+    justify-content: center;
+    align-items: stretch;
+  }
+
+  @include respond(xl) {
+    margin-top: var(--space-xl);
+  }
+}
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+}
+@include respond(4k) {
+  .hero-content {
+    width: 100%;;
+    align-items: flex;
+    flex-direction: column;
+    max-width: max-content;
+    gap: 2rem;
+    
+  }
+
+  .hero-illustration { 
+    padding: 0.2rem;
+  }
+
+  .hero-illustration img {
+    max-height: 40rem;
+    width: 100%;
+    border-radius: var(--radius-md);
+    object-fit: cover;
+    object-position: center;
+  }
+  .hero-text-group {
+    justify-content: center;
+    
+  }
+
+  .hero-presentation {
+    max-width: 100%;
+    max-height: 15rem;
+    padding: 1rem;
+    font-size: var(--font-lg);
+
+  }
+
+  .hero-presentation-secondary {
+    max-width: 100%;
+    overflow: hidden;
+    
+  }
+  
+
+  .hero-map-section {
+   max-width: 100%;
+   height: 44rem;
+    
+  }
+
+  .hero-map-preview
+   {
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hero-map-side-card {
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: top;
+  }
+
+  .hero-wrapper {
+    max-width: 2800px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--space-xl);
+    padding-right: var(--space-xl);
   }
 }
 </style>

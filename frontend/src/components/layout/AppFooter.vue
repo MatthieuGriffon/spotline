@@ -34,11 +34,11 @@ const isActive = (path: string) => route.path.startsWith(path)
 
 <style scoped lang="scss">
 .app-footer {
-  position: fixed;
+  position: sticky;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 4rem;
+  height: var(--footer-height);
   background-color: #d0c6c6;
   border-top: 1px solid var(--color-border);
   border-top-left-radius: var(--radius-lg);

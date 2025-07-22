@@ -55,21 +55,27 @@ easing: 'ease',
   width: 100%;
   max-width: 100%;
 
-img {
-  width: 100%;
-  height: auto;
-  border-radius: var(--radius-md);
-  object-fit: cover;
-  box-shadow: var(--shadow-sm);
-  border: 4px solid var(--color-surface);
-  background-color: var(--color-background-soft);
-  transition: transform 0.3s ease;
+  img {
+    width: 100%;
+    height: auto;
+    max-height: 20rem; // ✅ hauteur adaptée pour 4K
+    border-radius: var(--radius-md);
+    object-fit: cover;
+    box-shadow: var(--shadow-sm);
+    border: 4px solid var(--color-surface);
+    background-color: var(--color-background-soft);
+    transition: transform 0.3s ease;
 
-  &:hover {
-    transform: scale(1.05);
-    box-shadow: var(--shadow-md);
+    &:hover {
+      transform: scale(1.05);
+      box-shadow: var(--shadow-md);
+    }
+
+    @include respond(4k) {
+      object-fit: contain;
+      max-height: 20rem;
+    }
   }
-}
 .slide-card {
   position: relative;
   cursor: pointer;
