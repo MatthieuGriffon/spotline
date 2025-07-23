@@ -1,0 +1,48 @@
+.app-footer {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--footer-height);
+  background-color: #d0c6c6;
+  border-top: 1px solid var(--color-border);
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-footer, 100);
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1); // optionnel pour le flottement doux
+}
+
+.footer-nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-xs);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  gap: 0.25rem;
+  transition: color 0.2s ease;
+
+  &.active {
+    color: var(--color-primary);
+  }
+
+ &:hover {
+  color: var(--color-primary-hover);
+}
+}
+font-awesome-icon {
+  font-size: 1.25rem;
+}

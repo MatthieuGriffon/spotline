@@ -13,18 +13,4 @@ import AppHeader from './AppHeader.vue'
 import AppFooter from './AppFooter.vue'
 </script>
 
-<style scoped lang="scss">
-.layout {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh; // très important ici
-}
-
-.layout-content {
-  flex: 1;
-  display: flex; 
-  flex-direction: column;
-  padding-bottom: var(--footer-height);
-}
-
-</style>
+<style scoped src="../styles/Layout.scss" lang="scss" />
