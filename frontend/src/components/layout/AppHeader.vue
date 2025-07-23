@@ -6,7 +6,7 @@ const city = ref<string | null>(null)
 const iconCode = ref<string | null>(null)
 const description = ref<string | null>(null)
 const weatherEmoji = ref<string>('')
-
+defineEmits(['auth-requested'])
 const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY
 
 const getWeatherEmoji = (icon: string): string => {
@@ -71,9 +71,9 @@ onMounted(() => {
     </div>
 
     <div class="header-action">
-      <button class="auth-button">
-        <font-awesome-icon icon="sign-in-alt" /> Connexion
-      </button>
+      <button class="auth-button" @click="$emit('auth-requested')">
+  <font-awesome-icon icon="sign-in-alt" /> Connexion
+</button>
     </div>
   </header>
 </template>

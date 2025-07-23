@@ -5,7 +5,7 @@
   align-items: center;
   padding: var(--space-md);
   gap: var(--space-md);
-  min-height: 100vh;
+  padding-bottom: 0.5rem;
   background-color: rgb(23, 58, 67);
   @include respond(2xl) {
    gap: var(--space-lg);
@@ -56,7 +56,7 @@
   margin-top: 1rem;
 
   @include respond(lg) {
-    height: 100%;
+    height: auto;
     margin-top: 0;
   }
   @include respond(xl) {
@@ -76,7 +76,7 @@
 
     display: block;
      @include respond(4k) {
-  object-fit: contain;
+     object-fit: contain;
   }
   }
 }
@@ -199,8 +199,7 @@ justify-content: center;
     gap: var(--space-md);
     background-color: var(--color-background);
     border: 6px solid #c1bdbd;
-    border-radius: var(--radius-lg);
-    padding: var(--space-md);
+    border-radius: var(--radius-lg);   
     width: 50%;
     max-height: 21.5rem;
     box-shadow: var(--shadow-md);
@@ -327,7 +326,6 @@ justify-content: center;
   .hero-presentation-secondary {
     max-width: 100%;
     overflow: hidden;
-    
   }
   
 

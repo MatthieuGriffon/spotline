@@ -5,6 +5,7 @@ import MiniMap from '@/components/ui/MiniMap.vue'
 import TopEspecesCard from '@/components/stats/TopEspecesCard.vue'
 
 
+
 const lastPrises = [
   { id: '1', imageUrl: '/img/demo1.webp', espece: 'Brochet' },
   { id: '2', imageUrl: '/img/demo2.webp', espece: 'Carpe' },
