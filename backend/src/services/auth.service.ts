@@ -27,7 +27,17 @@ export async function registerUser(fastify: FastifyInstance, email: string, pass
     },
   })
 
-  await fastify.email.sendConfirmationEmail(email, token)
+  await fastify.email.sendMail({
+  to: email,
+  subject: 'Confirmation de ton compte Spotline',
+  html: `
+    <h2>Bienvenue sur Spotline !</h2>
+    <p>Pour confirmer ton compte, clique ici :</p>
+    <p>
+      <a href="${process.env.FRONTEND_URL}/confirm/${token}">Confirmer mon compte</a>
+    </p>
+  `,
+})
 
   return user
 }
@@ -79,13 +89,52 @@ export async function changePassword(
   // Envoi mail avec lien de confirmation
   const resetLink = `${process.env.FRONTEND_URL}/confirm-password-change/${token}`
 
-  await fastify.email.sendConfirmationEmail(
-    user.email,
-    token,
-    
-    'Confirmez votre changement de mot de passe',
-    `Cliquez sur ce lien pour valider votre nouveau mot de passe : ${resetLink}`
-  )
+ await fastify.email.sendMail({
+  to: user.email,
+  subject: 'Confirme le changement de ton mot de passe Spotline',
+  html: `
+    <h2>Sécurité de ton compte Spotline</h2>
+    <p>Pour valider ton nouveau mot de passe, clique sur ce lien :</p>
+    <p>
+      <a href="${resetLink}">Valider mon nouveau mot de passe</a>
+    </p>
+    <p>Ce lien est valable 1 heure.</p>
+  `,
+}) 
 
   return true
+}
+
+export async function confirmPasswordChange(fastify: FastifyInstance, token: string) {
+  const record = await fastify.prisma.passwordChangeToken.findUnique({
+    where: { token },
+    include: { user: true },
+  })
+
+  if (!record) {
+    throw fastify.httpErrors.notFound('Token invalide ou expiré')
+  }
+
+  if (record.expiresAt < new Date()) {
+    await fastify.prisma.passwordChangeToken.delete({ where: { token } })
+    throw fastify.httpErrors.badRequest('Token expiré')
+  }
+
+  await fastify.prisma.$transaction([
+    fastify.prisma.user.update({
+      where: { id: record.userId },
+      data: { hashedPwd: record.newHashedPwd },
+    }),
+    fastify.prisma.passwordChangeToken.delete({
+      where: { token },
+    }),
+  ])
+
+  return {
+    id: record.user.id,
+    email: record.user.email,
+    pseudo: record.user.pseudo,
+    role: record.user.role,
+    imageUrl: record.user.imageUrl,
+  }
 }

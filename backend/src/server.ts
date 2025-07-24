@@ -17,9 +17,9 @@ import fastifySession from '@fastify/session'
 app.register(fastifyCookie)
 
 app.register(fastifySession, {
-  secret: process.env.SESSION_SECRET || 'default_dev_secret_should_change',
+  secret: process.env.SESSION_SECRET || 'default_dev_secret_should_change', // 🔒 change en prod
   cookie: {
-    secure: false,
+    secure: false, // ⚠️ true en prod avec HTTPS
     httpOnly: true,
     sameSite: 'lax',
   },

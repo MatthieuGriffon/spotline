@@ -4,7 +4,7 @@ import { LoginBody } from '@/schemas/auth/login.schema'
 import { loginUser } from '@/services/auth.service'
 import { registerUser } from '@/services/auth.service'
 import { confirmEmailToken } from '@/services/emailConfirmationService'
-import { changePassword } from '@/services/auth.service'
+import { changePassword,confirmPasswordChange } from '@/services/auth.service'
 import { ChangePasswordBody } from '@/schemas/auth/changePassword.schema'
 
 
@@ -68,4 +68,23 @@ export async function changePasswordHandler(
   await changePassword(request.server, request.session.user.id, oldPassword, newPassword)
 
   reply.send({ message: 'Mot de passe modifié avec succès 🔒' })
+}
+
+export async function confirmPasswordChangeHandler(
+  request: FastifyRequest<{ Body: { token: string } }>,
+  reply: FastifyReply
+) {
+  const { token } = request.body
+
+  const user = await confirmPasswordChange(request.server, token)
+
+  // On peut connecter automatiquement l'utilisateur si on veut
+  request.session.user = {
+    id: user.id,
+    email: user.email,
+    pseudo: user.pseudo,
+    role: user.role,
+  }
+
+  reply.send({ message: 'Mot de passe modifié avec succès 🎉' })
 }
