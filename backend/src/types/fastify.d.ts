@@ -5,7 +5,12 @@ declare module 'fastify' {
   interface FastifyInstance {
     prisma: PrismaClient
     email: {
-      sendConfirmationEmail: (email: string, token: string) => Promise<void>
+      sendConfirmationEmail: (
+        email: string,
+        token: string,
+        subject?: string,
+        body?: string
+      ) => Promise<void>
     }
   }
   interface Session {

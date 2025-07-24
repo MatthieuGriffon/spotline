@@ -4,6 +4,9 @@ import { LoginBody } from '@/schemas/auth/login.schema'
 import { loginUser } from '@/services/auth.service'
 import { registerUser } from '@/services/auth.service'
 import { confirmEmailToken } from '@/services/emailConfirmationService'
+import { changePassword } from '@/services/auth.service'
+import { ChangePasswordBody } from '@/schemas/auth/changePassword.schema'
+
 
 export async function register(
   request: FastifyRequest<{ Body: typeof RegisterBody['static'] }>,
@@ -12,7 +15,7 @@ export async function register(
   const { email, password, pseudo } = request.body
   const user = await registerUser(request.server, email, password, pseudo)
 
-  reply.code(200).send({ message: 'Compte créé. Vérifie ta boîte mail ✉️' })
+  reply.code(200).send({ message: 'Compte créé. Vérifie ta boîte mail' })
 }
 
 export async function confirmEmailHandler(
@@ -29,7 +32,7 @@ export async function confirmEmailHandler(
     role: user.role,
   }
 
-  reply.send({ message: 'Email confirmé et connecté 🎉' })
+  reply.send({ message: 'Email confirmé et connecté' })
 }
 
 export async function login(
@@ -41,9 +44,28 @@ export async function login(
 
   request.session.user = user
 
-  reply.send({ message: 'Connexion réussie 🐟' })
+  reply.send({ message: 'Connexion réussie' })
+}
+
+export async function logout(request: FastifyRequest, reply: FastifyReply) {
+  await request.session.destroy()
+  reply.send({ message: 'Déconnecté avec succès' })
 }
 
 export async function getMe(request: FastifyRequest, reply: FastifyReply) {
   reply.send(request.session.user)
+}
+
+export async function changePasswordHandler(
+  request: FastifyRequest<{ Body: typeof ChangePasswordBody['static'] }>,
+  reply: FastifyReply
+) {
+  if (!request.session.user) {
+    return reply.unauthorized('Authentification requise')
+  }
+
+  const { oldPassword, newPassword } = request.body
+  await changePassword(request.server, request.session.user.id, oldPassword, newPassword)
+
+  reply.send({ message: 'Mot de passe modifié avec succès 🔒' })
 }
