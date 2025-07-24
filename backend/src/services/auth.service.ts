@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { hashPassword } from '@/utils/password'
+import { verifyPassword } from '@/utils/password'
 import { v4 as uuidv4 } from 'uuid'
 
 export async function registerUser(fastify: FastifyInstance, email: string, password: string, pseudo: string) {
@@ -30,4 +31,22 @@ export async function registerUser(fastify: FastifyInstance, email: string, pass
   await fastify.email.sendConfirmationEmail(email, token)
 
   return user
+}
+
+export async function loginUser(fastify: FastifyInstance, email: string, password: string) {
+  const user = await fastify.prisma.user.findUnique({ where: { email } })
+
+  if (!user) throw fastify.httpErrors.unauthorized('Email ou mot de passe invalide')
+  if (!user.isConfirmed) throw fastify.httpErrors.unauthorized('Email non confirmé')
+
+  const isValid = await verifyPassword(password, user.hashedPwd)
+  if (!isValid) throw fastify.httpErrors.unauthorized('Email ou mot de passe invalide')
+
+  return {
+    id: user.id,
+    email: user.email,
+    pseudo: user.pseudo,
+    role: user.role,
+    imageUrl: user.imageUrl,
+  }
 }

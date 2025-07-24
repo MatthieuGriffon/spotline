@@ -4,8 +4,7 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "sync-env": "copy .env prisma\\.env",
-    "dev": "npm run sync-env && tsx watch src/server.ts",
+   "dev": "tsx watch src/server.ts",
     "generate": "prisma generate",
     "studio": "prisma studio"
   },

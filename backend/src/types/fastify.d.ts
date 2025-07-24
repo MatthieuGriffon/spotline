@@ -8,14 +8,12 @@ declare module 'fastify' {
       sendConfirmationEmail: (email: string, token: string) => Promise<void>
     }
   }
-
-  interface FastifyRequest {
-    session: {
-      user?: {
-        id: string
-        email: string
-        pseudo: string
-      }
+  interface Session {
+    user?: {
+      id: string
+      email: string
+      pseudo: string
+      role: 'USER' | 'ADMIN'
     }
   }
 }

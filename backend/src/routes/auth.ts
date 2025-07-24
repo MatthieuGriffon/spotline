@@ -1,12 +1,60 @@
+// Libs externes
 import { FastifyInstance } from 'fastify'
-import { register } from '@/controllers/auth.controller'
+import { Type } from '@sinclair/typebox'
+// Middlewares
+import { requireAuth } from '@/middlewares/requireAuth'
+// Controllers
+import {
+  register,
+  confirmEmailHandler,
+  login,
+  getMe,
+} from '@/controllers/auth.controller'
+// Schemas
 import { RegisterBody } from '@/schemas/auth.schema'
+import { confirmParamsSchema } from '@/schemas/auth/confirm'
+import { LoginBody } from '@/schemas/auth/login.schema'
+import { meRouteSchema } from '@/schemas/auth/meRouteSchema'
 
 export default async function authRoutes(fastify: FastifyInstance) {
-  fastify.post('/register', {
+  
+  fastify.get('/confirm/:token', {
+    schema: {
+      params: confirmParamsSchema,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+    handler: confirmEmailHandler,
+  })
+
+  fastify.get('/me', {
+  preHandler: requireAuth,
+  schema: meRouteSchema,
+  handler: getMe,
+  })
+
+fastify.post('/register', {
     schema: {
       body: RegisterBody,
     },
     handler: register,
+  })
+
+  fastify.post('/login', {
+  schema: {
+    body: LoginBody,
+    response: {
+      200: Type.Object({
+        message: Type.String(),
+      }),
+    },
+  },
+  handler: login,
   })
 }

@@ -11,10 +11,10 @@ model User {
   email       String   @unique
   hashedPwd   String
   pseudo      String
-  imageUrl    String?       // avatar
+  imageUrl    String?
   isConfirmed Boolean  @default(false)
   defaultVisibility Visibility @default(private)
-
+  role        UserRole @default(USER) // 👈 ici
   createdAt   DateTime @default(now())
 
   groups      GroupMember[]
@@ -22,6 +22,11 @@ model User {
   sessions    Session[]   @relation("OrganisateurSessions")
   invites     SessionInvite[]
   tokens      EmailConfirmationToken[]
+}
+
+enum UserRole {
+  USER
+  ADMIN
 }
 
 model Group {
