@@ -1,14 +1,16 @@
 .top-especes-card {
   background-color: var(--color-background);
-  border: 6px solid #c1bdbd;
   border-radius: var(--radius-lg);
   padding: var(--space-md);
   box-shadow: var(--shadow-md);
+  width: 100%;
+  
 
   h2 {
     font-size: var(--font-lg);
     color: var(--color-primary);
     margin-bottom: var(--space-md);
+    text-align: center;
   }
 
   ul {

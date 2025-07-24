@@ -1,6 +1,13 @@
 prise-slider {
   width: 100%;
   max-width: 100%;
+  height: auto;
+  @include respond(lg) {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
 
   img {
     width: 100%;
@@ -17,32 +24,36 @@ prise-slider {
       transform: scale(1.05);
       box-shadow: var(--shadow-md);
     }
-
+    @include respond(lg) {
+      height: 100%;
+      max-height: unset;
+      object-fit: cover;
+    }
     @include respond(4k) {
       object-fit: contain;
-      max-height: 20rem;
+      max-height: 24rem;
     }
   }
-.slide-card {
-  position: relative;
-  cursor: pointer;
+  .slide-card {
+    position: relative;
+    cursor: pointer;
 
-  .badge {
-    position: absolute;
-    bottom: var(--space-sm);
-    right: var(--space-sm);
-    background-color: var(--color-primary);
-    color: #fff;
-    padding: 0.25rem 0.5rem;
-    font-size: var(--font-xs);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-sm);
+    .badge {
+      position: absolute;
+      bottom: var(--space-sm);
+      right: var(--space-sm);
+      background-color: var(--color-primary);
+      color: #fff;
+      padding: 0.25rem 0.5rem;
+      font-size: var(--font-xs);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-sm);
+    }
   }
-}
 
-img:hover {
-  transform: scale(1.5);
-}
+  img:hover {
+    transform: scale(1.5);
+  }
 
   .prise-slider__empty {
     text-align: center;

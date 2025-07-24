@@ -1,0 +1,137 @@
+.feature-intro-card {
+  order: 1;
+  background-color: var(--color-background);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+
+  h1 {
+    font-size: var(--font-lg);
+    font-weight: 700;
+    margin-bottom: var(--space-sm);
+    color: var(--color-primary);
+  }
+
+
+  @include respond(lg) {
+    height: 45rem;
+    margin-top: -1.4rem;
+    margin-bottom: -0.4rem;
+    
+  }
+  
+  @include respond(2xl) {
+    font-size: var(--font-base);
+    padding: var(--space-lg);
+    max-width: 100%;
+    flex: 1 1 auto;
+    height: auto;
+    border-radius: var(--radius-lg);
+    border: 8px solid var(--color-border);
+      h1 {
+      font-size: var(--font-lg);
+      font-weight: 700;
+      margin-bottom: var(--space-sm);
+      color: var(--color-primary);
+    }
+  }
+
+  @include respond(4k) {
+    font-size: var(--font-base);
+    padding: var(--space-lg);
+    max-width: 100%;
+    flex: 1 1 auto;
+    height: 85rem;
+    border-radius: var(--radius-lg);
+    border: 8px solid var(--color-border);
+      h1 {
+      font-size: var(--font-lg);
+      font-weight: 700;
+      margin-bottom: var(--space-sm);
+      color: var(--color-primary);
+    }
+  }
+
+  .feature-intro-layout {
+    display: flex;
+    flex-direction: row;
+    gap: var(--space-md);
+    align-items: flex-start;
+
+    @include respond(lg) {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    @include respond(4k) {
+       h1 {
+      font-size: var(--font-title);
+      font-weight: 700;
+      margin-bottom: var(--space-sm);
+      color: var(--color-primary);
+    }
+      font-size: var(--font-lg);
+      text-align: justify;
+      font-weight: 700;
+    }
+
+    img {
+      width: 10rem;
+      height: auto;
+      border-radius: var(--radius-md);
+      object-fit: cover;
+      flex-shrink: 0;
+
+      @include respond(lg) {
+        width: 100%;
+        height: auto;
+        max-height: 280px;
+        object-fit: cover;
+        border-radius: var(--radius-md) var(--radius-md) 0 0;
+        margin-bottom: var(--space-md);
+      }
+
+      @include respond(2xl) {
+        max-height: 30rem;
+        object-fit: cover;
+      }
+
+      @include respond(4k) {
+        max-height: 36rem;
+      }
+    }
+  }
+
+  .stats-box {
+    display: none;
+
+    @include respond(lg) {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: var(--space-md);
+      padding: var(--space-sm) var(--space-md);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background-color: var(--color-background-soft);
+      font-size: var(--font-sm);
+      gap: var(--space-sm);
+      flex-wrap: wrap;
+
+      @include respond(2xl) {
+        font-size: var(--font-base);
+        padding: var(--space-md);
+      }
+
+      span {
+        white-space: nowrap;
+        font-weight: 500;
+        color: var(--color-text-muted);
+      }
+    }
+  }
+}

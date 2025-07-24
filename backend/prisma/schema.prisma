@@ -13,6 +13,8 @@ model User {
   pseudo      String
   imageUrl    String?       // avatar
   isConfirmed Boolean  @default(false)
+  defaultVisibility Visibility @default(private)
+
   createdAt   DateTime @default(now())
 
   groups      GroupMember[]
@@ -109,7 +111,7 @@ enum Response {
 
 model EmailConfirmationToken {
   id         String   @id @default(cuid())
-  token      String   @unique
+  token      String   @unique @db.VarChar(128)
   user       User     @relation(fields: [userId], references: [id])
   userId     String
   createdAt  DateTime @default(now())

@@ -56,18 +56,17 @@ watch(() => props.spots, (newSpots) => {
 <style scoped lang="scss">
 .mini-map {
   width: 100%;
-  height: 100%;
+  aspect-ratio: 4 / 3; // 💡 rapport large classique (peut ajuster 16/9 ou carré)
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
 
   @include respond(md) {
-    height: 300px; // 💡 par exemple, tu ajustes à ton goût
+    aspect-ratio: 3 / 2;
   }
 
   @include respond(4k) {
-    height: 2500px; // pour ne pas trop gonfler sur très grand écran
-    width: 1217px;
+    aspect-ratio: 16 / 9;
   }
 }
 </style>

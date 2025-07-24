@@ -4,7 +4,8 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "sync-env": "copy .env prisma\\.env",
+    "dev": "npm run sync-env && tsx watch src/server.ts",
     "generate": "prisma generate",
     "studio": "prisma studio"
   },
@@ -14,15 +15,22 @@
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
     "@fastify/multipart": "^9.0.3",
+    "@fastify/sensible": "^6.0.3",
     "@fastify/session": "^11.1.0",
     "@prisma/client": "^6.12.0",
     "@sinclair/typebox": "^0.34.38",
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.2.0",
     "fastify": "^5.4.0",
     "prisma": "^6.12.0",
-    "sharp": "^0.34.3"
+    "sharp": "^0.34.3",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^24.0.14",
+    "@types/uuid": "^10.0.0",
+    "dotenv-cli": "^9.0.0",
     "tsx": "^4.20.3"
   }
 }

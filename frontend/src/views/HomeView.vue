@@ -3,6 +3,8 @@ import Layout from '@/components/layout/Layout.vue'
 import PriseSlider from '@/components/layout/home/PriseSlider.vue'
 import MiniMap from '@/components/ui/MiniMap.vue'
 import TopEspecesCard from '@/components/stats/TopEspecesCard.vue'
+import FeatureIntroCard from '@/components/layout/home/FeatureIntroCard.vue'
+
 
 
 
@@ -30,9 +32,8 @@ const topEspeces = [
     <div class="hero-wrapper">
       <div class="hero-content">
         <div class="hero-illustration">
-          <img src="@/assets/images/spotline-central.webp" alt="Scène de pêche" />
+           <FeatureIntroCard />
         </div>
-
         <div class="hero-text-group">
           <div class="hero-presentation">
             <h1>Bienvenue sur Spotline</h1>
