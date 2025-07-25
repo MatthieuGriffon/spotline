@@ -3,8 +3,8 @@ import * as dotenv from 'dotenv'
 import prismaPlugin from '@/plugins/prisma'
 import emailPlugin from '@/plugins/email'
 import sensible from '@fastify/sensible'
-import authRoutes from '@/routes/auth'
-import userRoutes from '@/routes/user.routes'
+import authRoutes from '@/routes/auth/auth'
+import userRoutes from '@/routes/user/user.routes'
 import { initAdmin } from '@/scripts/init-admin'
 
 

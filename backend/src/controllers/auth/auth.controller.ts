@@ -1,12 +1,12 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
-import { RegisterBody } from '@/schemas/auth.schema'
+import { RegisterBody } from '@/schemas/auth/auth.schema'
 import { LoginBody } from '@/schemas/auth/login.schema'
-import { loginUser } from '@/services/auth.service'
-import { registerUser } from '@/services/auth.service'
+import { loginUser } from '@/services/auth/auth.service'
+import { registerUser } from '@/services/auth/auth.service'
 import { confirmEmailToken } from '@/services/emailConfirmationService'
-import { changePassword,confirmPasswordChange } from '@/services/auth.service'
+import { changePassword,confirmPasswordChange } from '@/services/auth/auth.service'
 import { ChangePasswordBody } from '@/schemas/auth/changePassword.schema'
-import { forgotPassword, resetPassword } from '@/services/auth.service'
+import { forgotPassword, resetPassword } from '@/services/auth/auth.service'
 
 export async function register(
   request: FastifyRequest<{ Body: typeof RegisterBody['static'] }>,

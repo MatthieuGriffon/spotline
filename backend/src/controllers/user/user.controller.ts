@@ -1,5 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
-import { deleteUserById } from '@/services/user.services'
+import { deleteUserById } from '@/services/user/user.services'
+import { updateUserPseudo } from '@/services/user/user.services'
+import { UpdatePseudoBody } from '@/schemas/user/updatePseudo.schema'
 
 // Suppression par l'utilisateur connecté
 export async function deleteOwnAccount(request: FastifyRequest, reply: FastifyReply) {
@@ -19,4 +21,18 @@ export async function deleteUserByAdmin(
   const { id } = request.params as { id: string }
   await deleteUserById(request.server, id)
   reply.send({ message: 'Utilisateur supprimé par un admin' })
+}
+
+export async function changePseudo(
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  const userId = request.session.user?.id
+  if (!userId) return reply.unauthorized('Non authentifié')
+
+  const { pseudo } = request.body as { pseudo: string }
+
+  await updateUserPseudo(request.server, userId, pseudo)
+
+  reply.send({ message: 'Pseudo mis à jour' })
 }

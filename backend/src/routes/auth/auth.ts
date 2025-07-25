@@ -14,9 +14,9 @@ import {
   confirmPasswordChangeHandler,
   forgotPasswordHandler,
   resetPasswordHandler
-} from '@/controllers/auth.controller'
+} from '@/controllers/auth/auth.controller'
 // Schemas
-import { RegisterBody } from '@/schemas/auth.schema'
+import { RegisterBody } from '@/schemas/auth/auth.schema'
 import { confirmParamsSchema } from '@/schemas/auth/confirm'
 import { LoginBody } from '@/schemas/auth/login.schema'
 import { meRouteSchema } from '@/schemas/auth/meRouteSchema'

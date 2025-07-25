@@ -25,3 +25,14 @@ export async function deleteUserById(fastify: FastifyInstance, userId: string) {
   // Supprimer le compte
   await fastify.prisma.user.delete({ where: { id: userId } })
 }
+
+export async function updateUserPseudo(
+  fastify: FastifyInstance,
+  userId: string,
+  newPseudo: string
+) {
+  return fastify.prisma.user.update({
+    where: { id: userId },
+    data: { pseudo: newPseudo }
+  })
+}
