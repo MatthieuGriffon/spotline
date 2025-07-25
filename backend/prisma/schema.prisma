@@ -1,28 +1,30 @@
 generator client {
   provider = "prisma-client-js"
 }
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  hashedPwd   String
-  pseudo      String
-  imageUrl    String?
-  isConfirmed Boolean  @default(false)
+  id                String     @id @default(cuid())
+  email             String     @unique
+  hashedPwd         String
+  pseudo            String
+  imageUrl          String?
+  isConfirmed       Boolean    @default(false)
   defaultVisibility Visibility @default(private)
-  role        UserRole @default(USER) // 👈 ici
-  createdAt   DateTime @default(now())
+  role              UserRole   @default(USER) // 👈 ici
+  createdAt         DateTime   @default(now())
 
-  groups      GroupMember[]
-  prises      Prise[]
-  sessions    Session[]   @relation("OrganisateurSessions")
-  invites     SessionInvite[]
-  tokens      EmailConfirmationToken[]
-   passwordChangeTokens PasswordChangeToken[]
+  groups               GroupMember[]
+  prises               Prise[]
+  sessions             Session[]                @relation("OrganisateurSessions")
+  invites              SessionInvite[]
+  tokens               EmailConfirmationToken[]
+  passwordChangeTokens PasswordChangeToken[]
+  passwordResetTokens  PasswordResetToken[]
 }
 
 enum UserRole {
@@ -36,19 +38,19 @@ model Group {
   description String?
   createdAt   DateTime @default(now())
 
-  members     GroupMember[]
-  prises      Prise[]
-  sessions    Session[]
+  members  GroupMember[]
+  prises   Prise[]
+  sessions Session[]
 }
 
 model GroupMember {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  group     Group    @relation(fields: [groupId], references: [id])
-  groupId   String
-  role      GroupRole
-  joinedAt  DateTime @default(now())
+  id       String    @id @default(cuid())
+  user     User      @relation(fields: [userId], references: [id])
+  userId   String
+  group    Group     @relation(fields: [groupId], references: [id])
+  groupId  String
+  role     GroupRole
+  joinedAt DateTime  @default(now())
 
   @@unique([userId, groupId])
 }
@@ -60,11 +62,11 @@ enum GroupRole {
 }
 
 model Prise {
-  id          String   @id @default(cuid())
-  user        User     @relation(fields: [userId], references: [id])
-  userId      String
-  group       Group?   @relation(fields: [groupId], references: [id])
-  groupId     String?
+  id      String  @id @default(cuid())
+  user    User    @relation(fields: [userId], references: [id])
+  userId  String
+  group   Group?  @relation(fields: [groupId], references: [id])
+  groupId String?
 
   photoUrl    String
   espece      String
@@ -72,36 +74,36 @@ model Prise {
   date        DateTime
   description String?
 
-  latitude    Float
-  longitude   Float
-  visibility  Visibility
+  latitude   Float
+  longitude  Float
+  visibility Visibility
 
-  createdAt   DateTime  @default(now())
+  createdAt DateTime @default(now())
 }
 
 model Session {
-  id           String     @id @default(cuid())
-  title        String
-  description  String?
-  date         DateTime
-  latitude     Float
-  longitude    Float
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  date        DateTime
+  latitude    Float
+  longitude   Float
 
-  group        Group      @relation(fields: [groupId], references: [id])
-  groupId      String
-  organizer    User       @relation("OrganisateurSessions", fields: [organizerId], references: [id])
-  organizerId  String
+  group       Group  @relation(fields: [groupId], references: [id])
+  groupId     String
+  organizer   User   @relation("OrganisateurSessions", fields: [organizerId], references: [id])
+  organizerId String
 
-  invites      SessionInvite[]
+  invites SessionInvite[]
 
-  createdAt    DateTime   @default(now())
+  createdAt DateTime @default(now())
 }
 
 model SessionInvite {
-  id          String   @id @default(cuid())
-  session     Session  @relation(fields: [sessionId], references: [id])
+  id          String    @id @default(cuid())
+  session     Session   @relation(fields: [sessionId], references: [id])
   sessionId   String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
   userId      String
   response    Response?
   respondedAt DateTime?
@@ -116,12 +118,12 @@ enum Response {
 }
 
 model EmailConfirmationToken {
-  id         String   @id @default(cuid())
-  token      String   @unique @db.VarChar(128)
-  user       User     @relation(fields: [userId], references: [id])
-  userId     String
-  createdAt  DateTime @default(now())
-  expiresAt  DateTime
+  id        String   @id @default(cuid())
+  token     String   @unique @db.VarChar(128)
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
 }
 
 model PasswordChangeToken {
@@ -138,4 +140,13 @@ enum Visibility {
   public
   private
   group
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }

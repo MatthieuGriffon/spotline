@@ -138,3 +138,58 @@ export async function confirmPasswordChange(fastify: FastifyInstance, token: str
     imageUrl: record.user.imageUrl,
   }
 }
+
+export async function forgotPassword(fastify: FastifyInstance, email: string) {
+  const user = await fastify.prisma.user.findUnique({ where: { email } })
+  if (!user) return // Ne rien dire pour éviter l'enum brute-force
+
+  const token = uuidv4()
+  const expires = new Date(Date.now() + 1000 * 60 * 60) // 1h
+
+  await fastify.prisma.passwordResetToken.create({
+    data: {
+      token,
+      userId: user.id,
+      expiresAt: expires,
+    },
+  })
+
+  await fastify.email.sendMail({
+    to: email,
+    subject: 'Réinitialise ton mot de passe Spotline',
+    html: `
+      <h2>Réinitialisation de ton mot de passe Spotline</h2>
+      <p>Pour choisir un nouveau mot de passe, clique sur ce lien :</p>
+      <p>
+        <a href="${process.env.FRONTEND_URL}/reset-password/${token}">Réinitialiser mon mot de passe</a>
+      </p>
+      <p>Ce lien est valable 1 heure.</p>
+    `,
+  })
+}
+
+export async function resetPassword(fastify : FastifyInstance, token: string, newPassword: string) {
+  const record = await fastify.prisma.passwordResetToken.findUnique({
+    where: { token },
+    include: { user: true },
+  })
+
+  if (!record) throw fastify.httpErrors.notFound('Token invalide ou expiré')
+  if (record.expiresAt < new Date()) {
+    await fastify.prisma.passwordResetToken.delete({ where: { token } })
+    throw fastify.httpErrors.badRequest('Token expiré')
+  }
+
+  const hashedPwd = await hashPassword(newPassword)
+
+  await fastify.prisma.$transaction([
+    fastify.prisma.user.update({
+      where: { id: record.userId },
+      data: { hashedPwd },
+    }),
+    fastify.prisma.passwordResetToken.delete({
+      where: { token },
+    }),
+  ])
+  return true
+}

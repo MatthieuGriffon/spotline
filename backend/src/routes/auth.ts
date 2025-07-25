@@ -11,7 +11,9 @@ import {
   getMe,
   logout,
   changePasswordHandler,
-  confirmPasswordChangeHandler
+  confirmPasswordChangeHandler,
+  forgotPasswordHandler,
+  resetPasswordHandler
 } from '@/controllers/auth.controller'
 // Schemas
 import { RegisterBody } from '@/schemas/auth.schema'
@@ -99,4 +101,20 @@ fastify.post('/confirm-password-change', {
   },
   handler: confirmPasswordChangeHandler,
   })
+
+fastify.post('/forgot-password', {
+  schema: {
+    body: Type.Object({ email: Type.String({ format: 'email' }) }),
+    response: { 200: Type.Object({ message: Type.String() }) }
+  },
+  handler: forgotPasswordHandler,
+})
+
+fastify.post('/reset-password', {
+  schema: {
+    body: Type.Object({ token: Type.String(), newPassword: Type.String() }),
+    response: { 200: Type.Object({ message: Type.String() }) }
+  },
+  handler: resetPasswordHandler,
+})
 }

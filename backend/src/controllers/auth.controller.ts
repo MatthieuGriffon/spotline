@@ -6,7 +6,7 @@ import { registerUser } from '@/services/auth.service'
 import { confirmEmailToken } from '@/services/emailConfirmationService'
 import { changePassword,confirmPasswordChange } from '@/services/auth.service'
 import { ChangePasswordBody } from '@/schemas/auth/changePassword.schema'
-
+import { forgotPassword, resetPassword } from '@/services/auth.service'
 
 export async function register(
   request: FastifyRequest<{ Body: typeof RegisterBody['static'] }>,
@@ -87,4 +87,22 @@ export async function confirmPasswordChangeHandler(
   }
 
   reply.send({ message: 'Mot de passe modifié avec succès 🎉' })
+}
+
+export async function forgotPasswordHandler(
+  request: FastifyRequest<{ Body: { email: string } }>,
+  reply: FastifyReply
+) {
+  const { email } = request.body
+  await forgotPassword(request.server, email)
+  reply.send({ message: 'Si ce compte existe, un email a été envoyé.' })
+}
+
+export async function resetPasswordHandler(
+  request: FastifyRequest<{ Body: { token: string, newPassword: string } }>,
+  reply: FastifyReply
+) {
+  const { token, newPassword } = request.body
+  await resetPassword(request.server, token, newPassword)
+  reply.send({ message: 'Mot de passe réinitialisé avec succès 🎉' })
 }
