@@ -4,6 +4,7 @@ import prismaPlugin from '@/plugins/prisma'
 import emailPlugin from '@/plugins/email'
 import sensible from '@fastify/sensible'
 import authRoutes from '@/routes/auth'
+import userRoutes from '@/routes/user.routes'
 import { initAdmin } from '@/scripts/init-admin'
 
 
@@ -39,6 +40,7 @@ app.ready().then(async () => {
 
 // Register routes
 app.register(authRoutes, { prefix: '/api/auth' })
+app.register(userRoutes, { prefix: '/api' })
 
 // listen on port 3000
 app.listen({ port: 3000 }, (err, address) => {
