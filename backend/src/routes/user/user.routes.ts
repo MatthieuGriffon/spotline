@@ -4,6 +4,8 @@ import { DeleteUserParams } from '@/schemas/user/deleteUser.schema'
 import { UpdatePseudoBody } from '@/schemas/user/updatePseudo.schema'
 import { requireAuth } from '@/middlewares/requireAuth'
 import { adminGuard } from '@/middlewares/adminGuard'
+import { uploadAvatar } from '@/controllers/user/user.controller'
+
 
 const userRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.delete('/user', { preHandler: [requireAuth] }, deleteOwnAccount)
@@ -17,6 +19,10 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
     preHandler: [requireAuth],
     schema: { body: UpdatePseudoBody }
   }, changePseudo)
+
+  fastify.post('/user/avatar', {
+  preHandler: [requireAuth]
+}, uploadAvatar)
 }
 
 export default userRoutes
