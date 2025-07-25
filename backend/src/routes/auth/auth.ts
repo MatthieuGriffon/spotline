@@ -13,7 +13,8 @@ import {
   changePasswordHandler,
   confirmPasswordChangeHandler,
   forgotPasswordHandler,
-  resetPasswordHandler
+  resetPasswordHandler,
+  requestEmailChangeHandler
 } from '@/controllers/auth/auth.controller'
 // Schemas
 import { RegisterBody } from '@/schemas/auth/auth.schema'
@@ -22,7 +23,7 @@ import { LoginBody } from '@/schemas/auth/login.schema'
 import { meRouteSchema } from '@/schemas/auth/meRouteSchema'
 import { logoutRouteSchema } from '@/schemas/auth/logoutRouteSchema'
 import { ChangePasswordBody } from '@/schemas/auth/changePassword.schema'
-
+import { ChangeEmailBody } from '@/schemas/auth/changeEmail.schema'
 
 export default async function authRoutes(fastify: FastifyInstance) {
   
@@ -87,6 +88,22 @@ fastify.put('/password', {
   },
   handler: changePasswordHandler,
   })
+
+  fastify.put('/change-email', {
+  preHandler: requireAuth,
+  schema: {
+    body: ChangeEmailBody,
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          message: { type: 'string' },
+        },
+      },
+    },
+  },
+  handler: requestEmailChangeHandler,
+})
 
 fastify.post('/confirm-password-change', {
   schema: {

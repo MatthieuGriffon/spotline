@@ -7,6 +7,8 @@ import { confirmEmailToken } from '@/services/emailConfirmationService'
 import { changePassword,confirmPasswordChange } from '@/services/auth/auth.service'
 import { ChangePasswordBody } from '@/schemas/auth/changePassword.schema'
 import { forgotPassword, resetPassword } from '@/services/auth/auth.service'
+import { requestEmailChange } from '@/services/auth/auth.service'
+
 
 export async function register(
   request: FastifyRequest<{ Body: typeof RegisterBody['static'] }>,
@@ -33,6 +35,19 @@ export async function confirmEmailHandler(
   }
 
   reply.send({ message: 'Email confirmé et connecté' })
+}
+
+export async function requestEmailChangeHandler(
+  request: FastifyRequest<{ Body: { newEmail: string } }>,
+  reply: FastifyReply
+) {
+  const userId = request.session.user?.id
+  if (!userId) return reply.unauthorized('Non authentifié')
+
+  const { newEmail } = request.body
+  await requestEmailChange(request.server, userId, newEmail)
+
+  reply.send({ message: 'Un email de confirmation a été envoyé.' })
 }
 
 export async function login(

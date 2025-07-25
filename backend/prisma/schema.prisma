@@ -10,6 +10,7 @@ datasource db {
 model User {
   id                String     @id @default(cuid())
   email             String     @unique
+  pendingEmail      String?    @unique
   hashedPwd         String
   pseudo            String
   imageUrl          String?
@@ -25,6 +26,7 @@ model User {
   tokens               EmailConfirmationToken[]
   passwordChangeTokens PasswordChangeToken[]
   passwordResetTokens  PasswordResetToken[]
+  
 }
 
 enum UserRole {

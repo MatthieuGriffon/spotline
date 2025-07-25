@@ -15,21 +15,33 @@ export async function confirmEmailToken(fastify: FastifyInstance, token: string)
     throw fastify.httpErrors.badRequest('Token expiré')
   }
 
+  const user = record.user
+
   await fastify.prisma.$transaction([
     fastify.prisma.user.update({
-      where: { id: record.userId },
-      data: { isConfirmed: true },
+      where: { id: user.id },
+      data: user.pendingEmail
+        ? {
+            email: user.pendingEmail,
+            pendingEmail: null
+          }
+        : {
+            isConfirmed: true
+          }
     }),
     fastify.prisma.emailConfirmationToken.delete({
-      where: { token },
-    }),
+      where: { token }
+    })
   ])
 
-  // Création automatique de session (connexion)
-  const { id, email, role, pseudo } = record.user
-  fastify.log.info(`[AUTH] Connexion auto de ${email} après confirmation ✉️`)
+  const finalUser = await fastify.prisma.user.findUniqueOrThrow({
+    where: { id: user.id }
+  })
+
+  const { id, email, role, pseudo } = finalUser
+  fastify.log.info(`[AUTH] ${user.pendingEmail ? 'Changement d’email' : 'Activation'} de ${email} confirmé ✉️`)
 
   return {
-    user: { id, email, role, pseudo },
+    user: { id, email, role, pseudo }
   }
 }

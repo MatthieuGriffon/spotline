@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { hashPassword, verifyPassword } from '@/utils/password'
 import { v4 as uuidv4 } from 'uuid'
+import { randomUUID } from 'crypto'
 
 export async function registerUser(fastify: FastifyInstance, email: string, password: string, pseudo: string) {
   const existing = await fastify.prisma.user.findUnique({ where: { email } })
@@ -192,4 +193,45 @@ export async function resetPassword(fastify : FastifyInstance, token: string, ne
     }),
   ])
   return true
+}
+export async function requestEmailChange(
+  fastify: FastifyInstance,
+  userId: string,
+  newEmail: string
+) {
+  const existing = await fastify.prisma.user.findUnique({ where: { email: newEmail } })
+  if (existing) {
+    throw fastify.httpErrors.conflict('Cet email est déjà utilisé.')
+  }
+
+  // Stocker l'email en attente
+  await fastify.prisma.user.update({
+    where: { id: userId },
+    data: { pendingEmail: newEmail }
+  })
+
+  // Générer un token de confirmation
+  const token = randomUUID()
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24h
+
+  await fastify.prisma.emailConfirmationToken.create({
+    data: {
+      token,
+      userId,
+      expiresAt
+    }
+  })
+
+  const confirmUrl = `${process.env.APP_ORIGIN}/auth/confirm/${token}`
+
+  await fastify.email.sendMail({
+    to: newEmail,
+    subject: 'Confirme ton nouveau mail Spotline',
+    html: `
+      <p>Tu as demandé à changer ton adresse email.</p>
+      <p>Clique ici pour confirmer :</p>
+      <a href="${confirmUrl}">${confirmUrl}</a>
+      <p>Ce lien est valable 24h.</p>
+    `
+  })
 }
