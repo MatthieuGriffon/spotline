@@ -27,6 +27,7 @@ model User {
   passwordChangeTokens PasswordChangeToken[]
   passwordResetTokens  PasswordResetToken[]
   accountSessions      AccountSession[]
+  preferences          UserPreferences?
 
 }
 
@@ -162,4 +163,17 @@ model PasswordResetToken {
   user      User     @relation(fields: [userId], references: [id])
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+model UserPreferences {
+  id             String   @id @default(uuid())
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String   @unique
+
+  darkMode       Boolean  @default(false)
+  mapTile        String   @default("default") // ex: "default", "satellite", "night"
+  notifications  Boolean  @default(true)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }

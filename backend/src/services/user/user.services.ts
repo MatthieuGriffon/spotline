@@ -129,3 +129,26 @@ export async function deleteOtherSessions(fastify: FastifyInstance, userId: stri
     }
   })
 }
+
+export async function getUserPreferences(fastify: FastifyInstance, userId: string) {
+  return fastify.prisma.userPreferences.findUnique({
+    where: { userId }
+  })
+}
+
+export async function updateUserPreferences(
+  fastify: FastifyInstance,
+  userId: string,
+  prefs: Partial<{ darkMode: boolean, mapTile: string, notifications: boolean }>
+) {
+  return fastify.prisma.userPreferences.upsert({
+    where: { userId },
+    create: {
+      userId,
+      darkMode: prefs.darkMode ?? false,
+      mapTile: prefs.mapTile ?? 'default',
+      notifications: prefs.notifications ?? true
+    },
+    update: prefs
+  })
+}

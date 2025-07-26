@@ -9,10 +9,14 @@ import avatarRoutes from '@/routes/upload/avatar.routes'
 import { initAdmin } from '@/scripts/init-admin'
 import { accountSessionRoutes } from '@/routes/user/accountSession.route'
 import { updateLastSeenPlugin } from '@/plugins/updateLastSeen'
+import userSettingsRoutes from '@/routes/user/user.routes'
 
 
 import fastifyStatic from '@fastify/static'
 import path from 'path'
+
+import swagger from '@fastify/swagger'
+import swaggerUI from '@fastify/swagger-ui'
 
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
@@ -61,11 +65,33 @@ app.ready().then(async () => {
   await initAdmin(app.prisma)
 })
 
+app.register(swagger, {
+  openapi: {
+    info: {
+      title: 'Spotline API',
+      version: '1.0.0',
+      description: 'Documentation auto-générée de l’API Spotline'
+    },
+    servers: [
+      { url: 'http://localhost:3000', description: 'Dev local' }
+    ]
+  }
+})
+
+app.register(swaggerUI, {
+  routePrefix: '/docs', // Accès via http://localhost:3000/docs
+  uiConfig: {
+    docExpansion: 'list',
+    deepLinking: false
+  }
+})
+
 // Register routes
 app.register(authRoutes, { prefix: '/api/auth' })
 app.register(userRoutes, { prefix: '/api' })
 app.register(accountSessionRoutes, { prefix: '/api' })
 app.register(avatarRoutes)
+
 
 // listen on port 3000
 app.listen({ port: 3000 }, (err, address) => {
