@@ -8,6 +8,7 @@ import { changePassword,confirmPasswordChange } from '@/services/auth/auth.servi
 import { ChangePasswordBody } from '@/schemas/auth/changePassword.schema'
 import { forgotPassword, resetPassword } from '@/services/auth/auth.service'
 import { requestEmailChange } from '@/services/auth/auth.service'
+import { createAccountSession } from '@/services/user/user.services'
 
 
 export async function register(
@@ -57,7 +58,14 @@ export async function login(
   const { email, password } = request.body
   const user = await loginUser(request.server, email, password)
 
+  const ip = request.ip
+  const userAgent = request.headers['user-agent'] || ''
+
+  const session = await createAccountSession(request.server, user.id, userAgent, ip)
+  console.log('session avant assignation:', request.session)
+
   request.session.user = user
+request.session.accountSessionId = session.id
 
   reply.send({ message: 'Connexion réussie' })
 }

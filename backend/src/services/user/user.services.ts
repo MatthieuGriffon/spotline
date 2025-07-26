@@ -82,3 +82,50 @@ export async function updateUserAvatar(
 
   return newUrl
 }
+
+export async function createAccountSession(
+  fastify: FastifyInstance,
+  userId: string,
+  userAgent?: string,
+  ip?: string
+) {
+  return fastify.prisma.accountSession.create({
+    data: {
+      userId,
+      userAgent,
+      ip
+    }
+  })
+}
+
+export async function getUserSessions(fastify: FastifyInstance, userId: string) {
+  return fastify.prisma.accountSession.findMany({
+    where: { userId },
+    select: {
+      id: true,
+      createdAt: true,
+      lastSeen: true,
+      userAgent: true,
+      ip: true
+    },
+    orderBy: { lastSeen: 'desc' }
+  })
+}
+
+export async function deleteUserSession(fastify: FastifyInstance, userId: string, sessionId: string) {
+  return fastify.prisma.accountSession.deleteMany({
+    where: {
+      id: sessionId,
+      userId
+    }
+  })
+}
+
+export async function deleteOtherSessions(fastify: FastifyInstance, userId: string, currentSessionId: string) {
+  return fastify.prisma.accountSession.deleteMany({
+    where: {
+      userId,
+      NOT: { id: currentSessionId }
+    }
+  })
+}

@@ -7,6 +7,9 @@ import authRoutes from '@/routes/auth/auth'
 import userRoutes from '@/routes/user/user.routes'
 import avatarRoutes from '@/routes/upload/avatar.routes'
 import { initAdmin } from '@/scripts/init-admin'
+import { accountSessionRoutes } from '@/routes/user/accountSession.route'
+import { updateLastSeenPlugin } from '@/plugins/updateLastSeen'
+
 
 import fastifyStatic from '@fastify/static'
 import path from 'path'
@@ -47,7 +50,7 @@ app.register(fastifySession, {
 })
 
 
-
+app.register(updateLastSeenPlugin)
 app.register(prismaPlugin)
 app.register(emailPlugin)
 app.register(sensible)
@@ -61,6 +64,7 @@ app.ready().then(async () => {
 // Register routes
 app.register(authRoutes, { prefix: '/api/auth' })
 app.register(userRoutes, { prefix: '/api' })
+app.register(accountSessionRoutes, { prefix: '/api' })
 app.register(avatarRoutes)
 
 // listen on port 3000

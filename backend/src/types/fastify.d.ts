@@ -19,5 +19,12 @@ declare module 'fastify' {
       pseudo: string
       role: 'USER' | 'ADMIN'
     }
+     accountSessionId?: string
   }
+  export interface SessionUser {
+  id: string
+  pseudo: string
+  role: 'USER' | 'ADMIN'
+}
+  
 }

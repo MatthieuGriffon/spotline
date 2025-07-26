@@ -26,7 +26,18 @@ model User {
   tokens               EmailConfirmationToken[]
   passwordChangeTokens PasswordChangeToken[]
   passwordResetTokens  PasswordResetToken[]
-  
+  accountSessions      AccountSession[]
+
+}
+
+model AccountSession {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  createdAt DateTime @default(now())
+  lastSeen  DateTime @updatedAt
+  userAgent String?
+  ip        String?
 }
 
 enum UserRole {
