@@ -3,7 +3,39 @@ import path from 'path'
 import fs from 'fs/promises'
 
 const avatarRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/uploads/avatar/:filename', async (request, reply) => {
+  fastify.get('/uploads/avatar/:filename', {
+    schema: {
+      tags: ['user'],
+      summary: 'Récupérer un avatar',
+      description: 'Permet à un utilisateur connecté d’accéder à un avatar (JPEG ou PNG).',
+      params: {
+        type: 'object',
+        properties: {
+          filename: {
+            type: 'string',
+            description: 'Nom du fichier avatar (ex: abc123.jpg)'
+          }
+        },
+        required: ['filename']
+      },
+      response: {
+        200: {
+          description: 'Image de l’avatar',
+          content: {
+            'image/png': { schema: { type: 'string', format: 'binary' } },
+            'image/jpeg': { schema: { type: 'string', format: 'binary' } }
+          }
+        },
+        401: {
+          description: 'Non authentifié'
+        },
+        404: {
+          description: 'Avatar introuvable'
+        }
+      },
+      security: [{ sessionCookie: [] }]
+    }
+  }, async (request, reply) => {
     const { filename } = request.params as { filename: string }
 
     if (!request.session.user) {

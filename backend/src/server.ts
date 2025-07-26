@@ -74,6 +74,18 @@ app.register(swagger, {
     },
     servers: [
       { url: 'http://localhost:3000', description: 'Dev local' }
+    ],
+    components: {
+      securitySchemes: {
+        sessionCookie: {
+          type: 'apiKey',
+          in: 'cookie',
+          name: 'session'
+        }
+      }
+    },
+    security: [
+      { sessionCookie: [] }
     ]
   }
 })
@@ -81,8 +93,8 @@ app.register(swagger, {
 app.register(swaggerUI, {
   routePrefix: '/docs', // Accès via http://localhost:3000/docs
   uiConfig: {
-    docExpansion: 'list',
-    deepLinking: false
+    docExpansion: 'full',
+    deepLinking: true
   }
 })
 

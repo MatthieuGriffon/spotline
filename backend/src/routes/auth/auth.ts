@@ -1,9 +1,7 @@
-// Libs externes
 import { FastifyInstance } from 'fastify'
 import { Type } from '@sinclair/typebox'
-// Middlewares
 import { requireAuth } from '@/middlewares/requireAuth'
-// Controllers
+
 import {
   register,
   confirmEmailHandler,
@@ -16,7 +14,7 @@ import {
   resetPasswordHandler,
   requestEmailChangeHandler
 } from '@/controllers/auth/auth.controller'
-// Schemas
+
 import { RegisterBody } from '@/schemas/auth/auth.schema'
 import { confirmParamsSchema } from '@/schemas/auth/confirm'
 import { LoginBody } from '@/schemas/auth/login.schema'
@@ -26,112 +24,122 @@ import { ChangePasswordBody } from '@/schemas/auth/changePassword.schema'
 import { ChangeEmailBody } from '@/schemas/auth/changeEmail.schema'
 
 export default async function authRoutes(fastify: FastifyInstance) {
-  
+
   fastify.get('/confirm/:token', {
     schema: {
+      tags: ['auth'],
+      summary: 'Confirmer l’adresse email',
       params: confirmParamsSchema,
       response: {
-        200: {
-          type: 'object',
-          properties: {
-            message: { type: 'string' },
-          },
-        },
-      },
+        200: Type.Object({ message: Type.String() })
+      }
     },
-    handler: confirmEmailHandler,
+    handler: confirmEmailHandler
   })
 
   fastify.get('/me', {
-  preHandler: requireAuth,
-  schema: meRouteSchema,
-  handler: getMe,
+    preHandler: requireAuth,
+    schema: {
+      ...meRouteSchema,
+      tags: ['auth'],
+      summary: 'Infos de l’utilisateur connecté'
+    },
+    handler: getMe
   })
 
   fastify.post('/register', {
     schema: {
-      body: RegisterBody,
+      tags: ['auth'],
+      summary: 'Créer un compte',
+      body: RegisterBody
     },
-    handler: register,
+    handler: register
   })
 
   fastify.post('/login', {
-  schema: {
-    body: LoginBody,
-    response: {
-      200: Type.Object({
-        message: Type.String(),
-      }),
+    schema: {
+      tags: ['auth'],
+      summary: 'Connexion',
+      body: LoginBody,
+      response: {
+        200: Type.Object({ message: Type.String() })
+      }
     },
-  },
-  handler: login,
+    handler: login
   })
 
   fastify.post('/logout', {
-  preHandler: requireAuth,
-  schema: logoutRouteSchema,
-  handler: logout,
+    preHandler: requireAuth,
+    schema: {
+      ...logoutRouteSchema,
+      tags: ['auth'],
+      summary: 'Déconnexion'
+    },
+    handler: logout
   })
 
-fastify.put('/password', {
-  preHandler: requireAuth,
-  schema: {
-    body: ChangePasswordBody,
-    response: {
-      200: {
-        type: 'object',
-        properties: {
-          message: { type: 'string' },
-        },
-      },
+  fastify.put('/password', {
+    preHandler: requireAuth,
+    schema: {
+      tags: ['auth'],
+      summary: 'Changer son mot de passe',
+      body: ChangePasswordBody,
+      response: {
+        200: Type.Object({ message: Type.String() })
+      }
     },
-  },
-  handler: changePasswordHandler,
+    handler: changePasswordHandler
   })
 
   fastify.put('/change-email', {
-  preHandler: requireAuth,
-  schema: {
-    body: ChangeEmailBody,
-    response: {
-      200: {
-        type: 'object',
-        properties: {
-          message: { type: 'string' },
-        },
-      },
+    preHandler: requireAuth,
+    schema: {
+      tags: ['auth'],
+      summary: 'Demander un changement d’email',
+      body: ChangeEmailBody,
+      response: {
+        200: Type.Object({ message: Type.String() })
+      }
     },
-  },
-  handler: requestEmailChangeHandler,
-})
-
-fastify.post('/confirm-password-change', {
-  schema: {
-    body: Type.Object({
-      token: Type.String(),
-    }),
-    response: {
-      200: Type.Object({
-        message: Type.String(),
-      }),
-    },
-  },
-  handler: confirmPasswordChangeHandler,
+    handler: requestEmailChangeHandler
   })
 
-fastify.post('/forgot-password', {
-  schema: {
-    body: Type.Object({ email: Type.String({ format: 'email' }) }),
-    response: { 200: Type.Object({ message: Type.String() }) }
-  },
-  handler: forgotPasswordHandler,
-})
+  fastify.post('/confirm-password-change', {
+    schema: {
+      tags: ['auth'],
+      summary: 'Confirmer un changement de mot de passe',
+      body: Type.Object({ token: Type.String() }),
+      response: {
+        200: Type.Object({ message: Type.String() })
+      }
+    },
+    handler: confirmPasswordChangeHandler
+  })
 
-fastify.post('/reset-password', {
-  schema: {
-    body: Type.Object({ token: Type.String(), newPassword: Type.String() }),
-    response: { 200: Type.Object({ message: Type.String() }) }
-  },
-  handler: resetPasswordHandler,
-})
+  fastify.post('/forgot-password', {
+    schema: {
+      tags: ['auth'],
+      summary: 'Demander une réinitialisation du mot de passe',
+      body: Type.Object({ email: Type.String({ format: 'email' }) }),
+      response: {
+        200: Type.Object({ message: Type.String() })
+      }
+    },
+    handler: forgotPasswordHandler
+  })
+
+  fastify.post('/reset-password', {
+    schema: {
+      tags: ['auth'],
+      summary: 'Réinitialiser le mot de passe avec un token',
+      body: Type.Object({
+        token: Type.String(),
+        newPassword: Type.String()
+      }),
+      response: {
+        200: Type.Object({ message: Type.String() })
+      }
+    },
+    handler: resetPasswordHandler
+  })
 }
