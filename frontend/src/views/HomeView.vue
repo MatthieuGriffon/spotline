@@ -5,6 +5,7 @@ import TopEspecesCard from '@/components/stats/TopEspecesCard.vue'
 import FeatureIntroCard from '@/components/layout/home/FeatureIntroCard.vue'
 import EmailSentModal from '@/components/auth/EmailSentModal.vue'
 
+
 import { ref } from 'vue'
 
 const showEmailSentModal = ref(false)
@@ -29,7 +30,7 @@ const topEspeces = [
 </script>
 
 <template>
-  <Layout>
+  
     <div class="hero-wrapper">
       <div class="hero-content">
         <div class="hero-illustration">
@@ -70,7 +71,7 @@ const topEspeces = [
   v-if="showEmailSentModal"
   @close="showEmailSentModal = false"
 />
-  </Layout>
+
 </template>
 
 <style scoped src="@/views/styles/HomeView.scss" lang="scss" />

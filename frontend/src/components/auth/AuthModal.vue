@@ -30,10 +30,17 @@ const handleSubmit = async () => {
     }
   } else {
     await authStore.login(email.value, password.value)
-    if (authStore.user) {
-      emit('close')
-      router.push('/dashboard')
-    }
+if (authStore.user) {
+    console.log('[DEBUG] Redirection, rôle =', authStore.user.role)
+  emit('close')
+
+  const role = authStore.user.role.toLowerCase()
+  if (role === 'admin') {
+    router.push('/admin')
+  } else if (role === 'user') {
+    router.push('/dashboard')
+  }
+}
   }
 }
 </script>

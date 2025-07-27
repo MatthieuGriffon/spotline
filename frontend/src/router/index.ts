@@ -21,7 +21,27 @@ const router = createRouter({
   name: 'AdminDashboard',
   component: () => import('@/views/dashboard/AdminDashboard.vue'),
   meta: { requiresAuth: true, role: 'admin' }
-}
+},
+  {
+      path: '/map',
+      name: 'MapView',
+      component: () => import('@/views/map/MapView.vue')
+    },
+    {
+      path: '/catches',
+      name: 'CatchesView',
+      component: () => import('@/views/catches/CatchesView.vue')
+    },
+    {
+      path: '/groups',
+      name: 'GroupsView',
+      component: () => import('@/views/groups/GroupsView.vue')
+    },
+    {
+      path: '/sessions',
+      name: 'SessionsView',
+      component: () => import('@/views/sessions/SessionsView.vue')
+    }
   ]
 })
 
@@ -36,20 +56,17 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // Redirige vers home si l'accès est protégé et pas connecté
-  if (to.meta.role && authStore.user?.role.toLowerCase() !== to.meta.role) {
-  return next({ name: 'home' })
-}
-
-  // Vérifie que le rôle correspond
-  if (to.meta.role) {
   const role = authStore.user?.role?.toLowerCase()
-  if (!role || role !== to.meta.role) {
+  const requiredRole = String(to.meta.role || '').toLowerCase()
+
+  console.log('[DEBUG] Navigation vers', to.path, '| rôle utilisateur :', role, '| attendu :', requiredRole)
+
+  if (to.meta.role && role !== requiredRole) {
     return next({ name: 'home' })
   }
-}
 
   return next()
 })
+
 
 export default router

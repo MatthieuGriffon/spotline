@@ -9,10 +9,8 @@ const authStore = useAuthStore()
     <h1>Tableau de bord administrateur</h1>
 
     <div v-if="authStore.user" class="admin-info">
-      <p><strong>ID :</strong> {{ authStore.user.id }}</p>
       <p><strong>Pseudo :</strong> {{ authStore.user.pseudo }}</p>
       <p><strong>Email :</strong> {{ authStore.user.email }}</p>
-      <p><strong>Rôle :</strong> {{ authStore.user.role }}</p>
     </div>
 
     <div v-else>

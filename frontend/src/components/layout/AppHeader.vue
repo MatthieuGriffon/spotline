@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-
+import { useAuthStore } from '@/stores/useAuthStore'
+import { useRouter } from 'vue-router'
 const temperature = ref<string | null>(null)
 const city = ref<string | null>(null)
 const iconCode = ref<string | null>(null)
 const description = ref<string | null>(null)
 const weatherEmoji = ref<string>('')
 defineEmits(['auth-requested'])
+
 const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY
+const authStore = useAuthStore()
+const router = useRouter()
 
 const getWeatherEmoji = (icon: string): string => {
   const map: Record<string, string> = {
@@ -23,7 +27,14 @@ const getWeatherEmoji = (icon: string): string => {
   }
   return map[icon] ?? '❔'
 }
-
+const handleLogout = async () => {
+  try {
+    await authStore.logout()
+    router.push('/')
+  } catch (err) {
+    console.error('Erreur à la déconnexion :', err)
+  }
+}
 const fetchWeather = async (lat: number, lon: number) => {
   try {
     const res = await fetch(
@@ -51,6 +62,7 @@ onMounted(() => {
     )
   }
 })
+
 </script>
 <template>
   <header class="header">
@@ -71,10 +83,22 @@ onMounted(() => {
     </div>
 
     <div class="header-action">
-      <button class="auth-button" @click="$emit('auth-requested')">
-  <font-awesome-icon icon="sign-in-alt" /> Connexion
+  <button
+    v-if="!authStore.user"
+    @click="$emit('auth-requested')"
+    class="auth-button"
+  >
+    Se connecter
+  </button>
+
+  <button
+  v-else
+  class="auth-button"
+  @click="handleLogout"
+>
+  Se déconnecter
 </button>
-    </div>
+</div>
   </header>
 </template>
 

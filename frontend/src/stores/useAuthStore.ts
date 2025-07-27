@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { loginUser, registerUser, getMe, logoutUser } from '@/api/auth'
 
-
 export interface User {
   id: string
   email: string
@@ -22,9 +21,12 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true
     errorMessage.value = null
     successMessage.value = null
+
     try {
       const data = await loginUser(email, password)
       await fetchMe()
+      console.log('[DEBUG] user après login:', user.value)
+
       successMessage.value = data.message || 'Connexion réussie'
     } catch (err: any) {
       errorMessage.value = err.message ?? 'Erreur lors de la connexion'
@@ -37,6 +39,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true
     errorMessage.value = null
     successMessage.value = null
+
     try {
       const data = await registerUser(email, pseudo, password)
       successMessage.value = data.message || 'Compte créé ! Vérifie ta boîte mail.'
