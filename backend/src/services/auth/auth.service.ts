@@ -35,7 +35,7 @@ export async function registerUser(fastify: FastifyInstance, email: string, pass
     <h2>Bienvenue sur Spotline !</h2>
     <p>Pour confirmer ton compte, clique ici :</p>
     <p>
-      <a href="${process.env.FRONTEND_URL}/confirm/${token}">Confirmer mon compte</a>
+      <a href="${process.env.FRONTEND_URL}/?token=${token}">Confirmer mon compte</a>
     </p>
   `,
 })

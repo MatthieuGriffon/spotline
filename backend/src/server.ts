@@ -1,5 +1,6 @@
 import Fastify from 'fastify'
 import * as dotenv from 'dotenv'
+import cors from '@fastify/cors'
 import prismaPlugin from '@/plugins/prisma'
 import emailPlugin from '@/plugins/email'
 import sensible from '@fastify/sensible'
@@ -9,7 +10,7 @@ import avatarRoutes from '@/routes/upload/avatar.routes'
 import { initAdmin } from '@/scripts/init-admin'
 import { accountSessionRoutes } from '@/routes/user/accountSession.route'
 import { updateLastSeenPlugin } from '@/plugins/updateLastSeen'
-import userSettingsRoutes from '@/routes/user/user.routes'
+
 
 
 import fastifyStatic from '@fastify/static'
@@ -27,6 +28,11 @@ const __dirname = dirname(__filename)
 dotenv.config()
 const app = Fastify({
   logger: true
+})
+// Enable CORS for all origins
+await app.register(cors, {
+  origin: 'http://localhost:5173', // ou true si tu veux autoriser tout en dev
+  credentials: true
 })
 import fastifyCookie from '@fastify/cookie'
 import fastifySession from '@fastify/session'

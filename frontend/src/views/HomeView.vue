@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import Layout from '@/components/layout/Layout.vue'
 import PriseSlider from '@/components/layout/home/PriseSlider.vue'
 import MiniMap from '@/components/ui/MiniMap.vue'
 import TopEspecesCard from '@/components/stats/TopEspecesCard.vue'
 import FeatureIntroCard from '@/components/layout/home/FeatureIntroCard.vue'
+import EmailSentModal from '@/components/auth/EmailSentModal.vue'
 
+import { ref } from 'vue'
 
-
+const showEmailSentModal = ref(false)
 
 const lastPrises = [
   { id: '1', imageUrl: '/img/demo1.webp', espece: 'Brochet' },
@@ -64,6 +65,11 @@ const topEspeces = [
   </div>
 </div>
     </div>
+  
+<EmailSentModal
+  v-if="showEmailSentModal"
+  @close="showEmailSentModal = false"
+/>
   </Layout>
 </template>
 

@@ -35,7 +35,40 @@ export async function confirmEmailHandler(
     role: user.role,
   }
 
-  reply.send({ message: 'Email confirmé et connecté' })
+  reply.send({
+  message: 'Email confirmé et connecté',
+  user: {
+    id: user.id,
+    email: user.email,
+    pseudo: user.pseudo,
+    role: user.role,
+  }
+})
+}
+
+export async function confirmEmailViaQuery(
+  request: FastifyRequest<{ Querystring: { token: string } }>,
+  reply: FastifyReply
+) {
+  const { token } = request.query
+  const { user } = await confirmEmailToken(request.server, token)
+
+  request.session.user = {
+    id: user.id,
+    email: user.email,
+    pseudo: user.pseudo,
+    role: user.role,
+    }
+
+  reply.send({
+    message: 'Email confirmé et connecté',
+    user: {
+      id: user.id,
+      email: user.email,
+      pseudo: user.pseudo,
+      role: user.role
+    }
+  })
 }
 
 export async function requestEmailChangeHandler(

@@ -1,11 +1,41 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useAuthStore } from '@/stores/useAuthStore'
+import EmailSentModal from '@/components/auth/EmailSentModal.vue'
+import { useRouter } from 'vue-router'
+
 
 const emit = defineEmits<{
   (e: 'close'): void
+  (e: 'email-sent'): void
 }>()
 
 const isRegistering = ref(false)
+const email = ref('')
+const password = ref('')
+const pseudo = ref('')
+
+const authStore = useAuthStore()
+const showEmailSentModal = ref(false)
+
+const router = useRouter()
+
+const handleSubmit = async () => {
+  if (isRegistering.value) {
+    await authStore.register(email.value, pseudo.value, password.value)
+
+    if (authStore.successMessage?.includes('Vérifie ta boîte mail')) {
+      emit('close')
+      emit('email-sent')
+    }
+  } else {
+    await authStore.login(email.value, password.value)
+    if (authStore.user) {
+      emit('close')
+      router.push('/dashboard')
+    }
+  }
+}
 </script>
 
 <template>
@@ -16,28 +46,39 @@ const isRegistering = ref(false)
       <div class="auth-modal-content">
         <h2>{{ isRegistering ? 'Créer un compte' : 'Connexion' }}</h2>
 
-        <form @submit.prevent>
+        <form @submit.prevent="handleSubmit">
           <template v-if="isRegistering">
             <label>
               Pseudo
-              <input type="text" placeholder="Ton pseudo" required />
+              <input v-model="pseudo" type="text" placeholder="Ton pseudo" required />
             </label>
           </template>
 
           <label>
             Adresse email
-            <input type="email" placeholder="ton@email.com" required />
+            <input v-model="email" type="email" placeholder="ton@email.com" required />
           </label>
 
           <label>
             Mot de passe
-            <input type="password" placeholder="Mot de passe" required />
+            <input v-model="password" type="password" placeholder="Mot de passe" required />
           </label>
 
-          <button type="submit" class="auth-submit-btn">
+          <button type="submit" class="auth-submit-btn" :disabled="authStore.isLoading">
             {{ isRegistering ? "S'inscrire" : 'Se connecter' }}
           </button>
         </form>
+
+        <p v-if="authStore.errorMessage" class="auth-error">
+          {{ authStore.errorMessage }}
+        </p>
+
+        <p
+  v-if="authStore.successMessage && !showEmailSentModal"
+  class="auth-success"
+>
+  {{ authStore.successMessage }}
+</p>
 
         <p class="auth-switch">
           <span>{{ isRegistering ? 'Déjà un compte ?' : 'Pas encore inscrit ?' }}</span>
@@ -48,6 +89,7 @@ const isRegistering = ref(false)
       </div>
     </div>
   </div>
+  <EmailSentModal v-if="showEmailSentModal" @close="showEmailSentModal = false" />
 </template>
 
 <style scoped src="../styles/AuthModal.scss" lang="scss" />

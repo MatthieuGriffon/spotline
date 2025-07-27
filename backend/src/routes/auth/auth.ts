@@ -22,6 +22,9 @@ import { meRouteSchema } from '@/schemas/auth/meRouteSchema'
 import { logoutRouteSchema } from '@/schemas/auth/logoutRouteSchema'
 import { ChangePasswordBody } from '@/schemas/auth/changePassword.schema'
 import { ChangeEmailBody } from '@/schemas/auth/changeEmail.schema'
+import { confirmEmailToken } from '@/services/emailConfirmationService'
+import { confirmEmailViaQuery } from '@/controllers/auth/auth.controller'
+
 
 export default async function authRoutes(fastify: FastifyInstance) {
 
@@ -36,6 +39,28 @@ export default async function authRoutes(fastify: FastifyInstance) {
     },
     handler: confirmEmailHandler
   })
+
+  fastify.get('/confirm', {
+  schema: {
+    tags: ['auth'],
+    summary: 'Confirmer l’adresse email via query',
+    querystring: Type.Object({
+      token: Type.String({ minLength: 10 })
+    }),
+    response: {
+      200: Type.Object({
+        message: Type.String(),
+        user: Type.Object({
+          id: Type.String(),
+          email: Type.String(),
+          pseudo: Type.String(),
+          role: Type.String()
+        })
+      })
+    }
+  },
+  handler: confirmEmailViaQuery
+})
 
   fastify.get('/me', {
     preHandler: requireAuth,
