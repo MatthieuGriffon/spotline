@@ -7,11 +7,12 @@ import sensible from '@fastify/sensible'
 import authRoutes from '@/routes/auth/auth'
 import userRoutes from '@/routes/user/user.routes'
 import avatarRoutes from '@/routes/upload/avatar.routes'
-import { adminUserRoutes } from '@/routes/admin/userRoutes'
+import { adminUserRoutes } from '@/routes/admin/userRoutes.routes'
 import { initAdmin } from '@/scripts/init-admin'
 import { accountSessionRoutes } from '@/routes/user/accountSession.route'
 import { updateLastSeenPlugin } from '@/plugins/updateLastSeen'
-import { adminStatsRoutes } from '@/routes/admin/statsRoutes'
+import { adminStatsRoutes } from '@/routes/admin/statsRoutes.routes'
+import { reportedPrisesRoutes } from '@/routes/admin/reportedPrise.routes'
 
 
 import fastifyStatic from '@fastify/static'
@@ -113,6 +114,7 @@ app.register(accountSessionRoutes, { prefix: '/api' })
 app.register(adminUserRoutes, { prefix: '/api' })
 app.register(avatarRoutes)
 app.register(adminStatsRoutes, { prefix: '/api/admin' })
+app.register(reportedPrisesRoutes, { prefix: '/api' })
 
 
 

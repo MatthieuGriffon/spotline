@@ -1,0 +1,43 @@
+import { Type } from '@sinclair/typebox'
+
+export const getReportedPrisesSchema = {
+  tags: ['admin'],
+  summary: 'Lister toutes les prises signalées',
+  response: {
+    200: Type.Array(
+      Type.Object({
+        id: Type.String(),
+        priseId: Type.String(),
+        user: Type.Object({
+          id: Type.String(),
+          pseudo: Type.String()
+        }),
+        group: Type.Optional(Type.String()),
+        date: Type.String(),
+        photoUrl: Type.String(),
+        description: Type.Optional(Type.String()),
+        signalementId: Type.String()
+      })
+    )
+  }
+}
+
+export const moderatePriseSchema = {
+  tags: ['admin'],
+  summary: 'Modérer une prise signalée',
+  params: Type.Object({
+    priseId: Type.String()
+  }),
+  body: Type.Object({
+    action: Type.Union([
+      Type.Literal('mask'),
+      Type.Literal('delete'),
+      Type.Literal('ignore')
+    ])
+  }),
+  response: {
+    200: Type.Object({
+      message: Type.String()
+    })
+  }
+}
