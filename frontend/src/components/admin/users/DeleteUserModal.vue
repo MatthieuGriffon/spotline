@@ -1,4 +1,37 @@
 <!-- src/components/admin/users/DeleteUserModal.vue -->
+<script setup lang="ts">
+import { ref } from 'vue'
+import AppModal from './AppModal.vue'
+import { deleteUser } from '@/api/adminUsers'
+
+const props = defineProps<{
+  user: {
+    id: string
+    pseudo: string
+  }
+}>()
+
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'deleted', id: string): void
+}>()
+
+const isLoading = ref(false)
+console.log('Cookies actuels :', document.cookie)
+async function handleDelete() {
+  isLoading.value = true
+  try {
+    await deleteUser(props.user.id)
+    emit('deleted', props.user.id)
+    emit('close')
+  } catch (err) {
+    console.error('Erreur suppression utilisateur :', err)
+  } finally {
+    isLoading.value = false
+  }
+}
+</script>
+
 <template>
   <AppModal @close="emit('close')">
     <template #title>
@@ -19,38 +52,7 @@
   </AppModal>
 </template>
 
-<script setup lang="ts">
-import { ref } from 'vue'
-import AppModal from './AppModal.vue'
 
-const props = defineProps<{
-  user: {
-    id: string
-    pseudo: string
-  }
-}>()
-
-const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'deleted', id: string): void
-}>()
-
-const isLoading = ref(false)
-
-async function handleDelete() {
-  isLoading.value = true
-  try {
-    // 💡 Remplace par un vrai appel à ton endpoint DELETE
-    await new Promise(resolve => setTimeout(resolve, 600))
-    emit('deleted', props.user.id)
-    emit('close')
-  } catch (err) {
-    console.error('Erreur suppression utilisateur :', err)
-  } finally {
-    isLoading.value = false
-  }
-}
-</script>
 
 <style scoped lang="scss">
 .confirm-text {

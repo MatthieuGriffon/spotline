@@ -7,10 +7,11 @@ import sensible from '@fastify/sensible'
 import authRoutes from '@/routes/auth/auth'
 import userRoutes from '@/routes/user/user.routes'
 import avatarRoutes from '@/routes/upload/avatar.routes'
+import { adminUserRoutes } from '@/routes/admin/userRoutes'
 import { initAdmin } from '@/scripts/init-admin'
 import { accountSessionRoutes } from '@/routes/user/accountSession.route'
 import { updateLastSeenPlugin } from '@/plugins/updateLastSeen'
-
+import { adminStatsRoutes } from '@/routes/admin/statsRoutes'
 
 
 import fastifyStatic from '@fastify/static'
@@ -31,8 +32,9 @@ const app = Fastify({
 })
 // Enable CORS for all origins
 await app.register(cors, {
-  origin: 'http://localhost:5173', // ou true si tu veux autoriser tout en dev
-  credentials: true
+  origin: 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 })
 import fastifyCookie from '@fastify/cookie'
 import fastifySession from '@fastify/session'
@@ -108,7 +110,10 @@ app.register(swaggerUI, {
 app.register(authRoutes, { prefix: '/api/auth' })
 app.register(userRoutes, { prefix: '/api' })
 app.register(accountSessionRoutes, { prefix: '/api' })
+app.register(adminUserRoutes, { prefix: '/api' })
 app.register(avatarRoutes)
+app.register(adminStatsRoutes, { prefix: '/api/admin' })
+
 
 
 // listen on port 3000

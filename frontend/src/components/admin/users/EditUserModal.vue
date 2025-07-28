@@ -1,3 +1,51 @@
+<script setup lang="ts">
+import { reactive, ref } from 'vue'
+import AppModal from './AppModal.vue'
+import type { User } from '@/types/user'
+import { updateUser } from '@/api/adminUsers'
+
+const props = defineProps<{
+  user: User
+}>()
+
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'updated', updatedUser: {
+    id: string
+    pseudo: string
+    role: 'USER' | 'ADMIN'
+    isBanned: boolean
+  }): void
+}>()
+
+const form = reactive({
+  pseudo: props.user.pseudo,
+  role: props.user.role,
+  isBanned: props.user.isBanned
+})
+
+const isLoading = ref(false)
+
+async function handleSubmit() {
+  isLoading.value = true
+  try {
+    const updated = await updateUser(props.user.id, {
+      pseudo: form.pseudo,
+      role: form.role,
+      isBanned: form.isBanned
+    })
+
+    emit('updated', updated)
+    emit('close')
+  } catch (err) {
+    console.error('Erreur édition utilisateur :', err)
+  } finally {
+    isLoading.value = false
+  }
+}
+</script>
+
+
 <!-- src/components/admin/users/EditUserModal.vue -->
 <template>
   <AppModal @close="emit('close')">
@@ -34,51 +82,7 @@
   </AppModal>
 </template>
 
-<script setup lang="ts">
-import { reactive, ref } from 'vue'
-import AppModal from './AppModal.vue'
 
-const props = defineProps<{
-  user: {
-    id: string
-    pseudo: string
-    role: 'USER' | 'ADMIN'
-    isBanned: boolean
-  }
-}>()
-
-const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'updated', updatedUser: any): void
-}>()
-
-const form = reactive({
-  pseudo: props.user.pseudo,
-  role: props.user.role,
-  isBanned: props.user.isBanned
-})
-
-const isLoading = ref(false)
-
-async function handleSubmit() {
-  isLoading.value = true
-  try {
-    // 🔄 Appel réel à faire plus tard
-    await new Promise(resolve => setTimeout(resolve, 600))
-
-    emit('updated', {
-      id: props.user.id,
-      ...form
-    })
-
-    emit('close')
-  } catch (err) {
-    console.error('Erreur édition utilisateur :', err)
-  } finally {
-    isLoading.value = false
-  }
-}
-</script>
 
 <style scoped lang="scss">
 .edit-form {

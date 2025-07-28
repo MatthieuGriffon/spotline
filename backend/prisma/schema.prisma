@@ -15,6 +15,7 @@ model User {
   pseudo            String
   imageUrl          String?
   isConfirmed       Boolean    @default(false)
+  isBanned          Boolean    @default(false)
   defaultVisibility Visibility @default(private)
   role              UserRole   @default(USER) // 👈 ici
   createdAt         DateTime   @default(now())
@@ -28,6 +29,8 @@ model User {
   passwordResetTokens  PasswordResetToken[]
   accountSessions      AccountSession[]
   preferences          UserPreferences?
+  spots                Spot[]
+  reports              Report[]
 
 }
 
@@ -93,6 +96,20 @@ model Prise {
   visibility Visibility
 
   createdAt DateTime @default(now())
+  reports   Report[]
+}
+
+model Spot {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  name      String
+  latitude  Float
+  longitude Float
+  description String?
+  isHidden  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  reports   Report[]
 }
 
 model Session {
@@ -176,4 +193,27 @@ model UserPreferences {
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  type      ReportType
+  message   String?
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  prise     Prise?   @relation(fields: [priseId], references: [id])
+  priseId   String?
+
+  spot      Spot?    @relation(fields: [spotId], references: [id])
+  spotId    String?
+
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+}
+
+enum ReportType {
+  USER
+  PRISE
+  SPOT
 }

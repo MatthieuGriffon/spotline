@@ -3,19 +3,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import EditUserModal from '@/components/admin/users/EditUserModal.vue'
 import DeleteUserModal from '@/components/admin/users/DeleteUserModal.vue'
+import type { User } from '@/types/user'
+import { fetchAllUsers } from '@/api/adminUsers'
 
 const router = useRouter()
 const selectedUserToEdit = ref<User | null>(null)
 const selectedUserToDelete = ref<User | null>(null)
 
-interface User {
-  id: string
-  pseudo: string
-  email: string
-  role: 'USER' | 'ADMIN'
-  isBanned: boolean
-  isConfirmed?: boolean // ← au cas où
-}
 
 const users = ref<User[]>([])
 const isLoading = ref(true)
@@ -41,18 +35,7 @@ const filteredUsers = computed(() =>
   })
 )
 
-// ⚠️ Fake temporaire — à remplacer par un vrai fetch ensuite
-onMounted(() => {
-  users.value = Array.from({ length: 25 }, (_, i) => ({
-    id: String(i + 1),
-    pseudo: `Utilisateur${i + 1}`,
-    email: `user${i + 1}@spotline.com`,
-    role: i % 5 === 0 ? 'ADMIN' : 'USER',
-    isBanned: i % 8 === 0,
-    isConfirmed: i % 3 !== 0
-  }))
-  isLoading.value = false
-})
+
 function openEditModal(user: User) {
   selectedUserToEdit.value = user
 }
@@ -61,7 +44,12 @@ function openDeleteModal(user: User) {
   selectedUserToDelete.value = user
 }
 
-function handleUserUpdated(updatedUser: User) {
+function handleUserUpdated(updatedUser: {
+  id: string
+  pseudo: string
+  role: 'USER' | 'ADMIN'
+  isBanned: boolean
+}) {
   const index = users.value.findIndex(u => u.id === updatedUser.id)
   if (index !== -1) {
     users.value[index] = { ...users.value[index], ...updatedUser }
@@ -71,6 +59,15 @@ function handleUserUpdated(updatedUser: User) {
 function handleUserDeleted(id: string) {
   users.value = users.value.filter(u => u.id !== id)
 }
+onMounted(async () => {
+  try {
+    users.value = await fetchAllUsers()
+  } catch (err) {
+    console.error('Erreur lors du chargement des utilisateurs', err)
+  } finally {
+    isLoading.value = false
+  }
+})
 </script>
 
 <template>
