@@ -2,18 +2,25 @@ import { FastifyInstance } from 'fastify'
 import { hashPassword, verifyPassword } from '@/utils/password'
 import { v4 as uuidv4 } from 'uuid'
 import { randomUUID } from 'crypto'
+import { sanitizePseudo } from '@/utils/sanitize'
 
-export async function registerUser(fastify: FastifyInstance, email: string, password: string, pseudo: string) {
+export async function registerUser(
+  fastify: FastifyInstance,
+  email: string,
+  password: string,
+  pseudo: string
+) {
   const existing = await fastify.prisma.user.findUnique({ where: { email } })
   if (existing) throw fastify.httpErrors.conflict('Email déjà utilisé')
 
+  const safePseudo = sanitizePseudo(pseudo)
   const hashedPwd = await hashPassword(password)
 
   const user = await fastify.prisma.user.create({
     data: {
       email,
       hashedPwd,
-      pseudo,
+      pseudo: safePseudo,
     },
   })
 
@@ -29,16 +36,16 @@ export async function registerUser(fastify: FastifyInstance, email: string, pass
   })
 
   await fastify.email.sendMail({
-  to: email,
-  subject: 'Confirmation de ton compte Spotline',
-  html: `
-    <h2>Bienvenue sur Spotline !</h2>
-    <p>Pour confirmer ton compte, clique ici :</p>
-    <p>
-      <a href="${process.env.FRONTEND_URL}/?token=${token}">Confirmer mon compte</a>
-    </p>
-  `,
-})
+    to: email,
+    subject: 'Confirmation de ton compte Spotline',
+    html: `
+      <h2>Bienvenue sur Spotline !</h2>
+      <p>Pour confirmer ton compte, clique ici :</p>
+      <p>
+        <a href="${process.env.FRONTEND_URL}/?token=${token}">Confirmer mon compte</a>
+      </p>
+    `,
+  })
 
   return user
 }

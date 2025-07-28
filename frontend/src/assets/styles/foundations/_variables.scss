@@ -1,25 +1,27 @@
-/* === Couleurs globales === */
 :root {
-  --color-background: #ffffff;
-  --color-background-soft: #f8f8f8;
-  --color-surface: #eeeeee;
+  /* --- Backgrounds & surfaces --- */
+  --color-background: #f5f8fa;           /* très clair, apaisant */
+  --color-background-soft: #e3edf3;      /* doux pour les cards */
+  --color-surface: #ffffff;              /* surface classique, bien lisible */
 
-  --color-text: #222222;
-  --color-text-muted: #666666;
+  /* --- Textes --- */
+  --color-text: #1f2d3d;                 /* presque noir */
+  --color-text-muted: #5c6b77;           /* pour légendes et infos secondaires */
 
-  --color-primary: #326795;
+  /* --- Couleurs d'accent --- */
+  --color-primary: #2a8fbd;              /* ton lagon profond, bleu-vert */
+  --color-primary-dark: #1c6f9a;
   --color-primary-hover: #1565c0;
 
-  --color-success: #2e7d32;
-  --color-error: #d32f2f;
-  --color-warning: #f9a825;
+  /* --- États --- */
+  --color-success: #3ba676;
+  --color-error: #e74c3c;
+  --color-warning: #f1c40f;
 
-  --color-border: #dddddd;
-  --color-group: #4caf50;
-  --color-map-highlight: #2196f3;
-
-  --color-primary: #2a8fbd;
-  --color-primary-dark: #1c6f9a;
+  /* --- Bordures et UI --- */
+  --color-border: #dce3e9;
+  --color-group: #58a65c;                /* vert nature */
+  --color-map-highlight: #3498db;        /* bleu vif pour carte */
 }
 
 /* === Espacements === */
@@ -61,4 +63,7 @@
 :root {
   --header-height: 5.2rem;
   --footer-height: 5rem; // ajuste à ta vraie hauteur
+} 
+:root {
+  --color-text-inverted: #ffffff;
 }
