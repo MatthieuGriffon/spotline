@@ -41,7 +41,43 @@ const router = createRouter({
       path: '/sessions',
       name: 'SessionsView',
       component: () => import('@/views/sessions/SessionsView.vue')
-    }
+    },
+    {
+  path: '/admin/users',
+  name: 'AdminUsers',
+  component: () => import('@/views/admin/AdminUsersView.vue'),
+  meta: { requiresAuth: true, role: 'admin' }
+},
+{
+  path: '/admin/catches',
+  name: 'AdminCatches',
+  component: () => import('@/views/admin/AdminCatchesView.vue'),
+  meta: { requiresAuth: true, role: 'admin' }
+},
+{
+  path: '/admin/spots',
+  name: 'AdminSpots',
+  component: () => import('@/views/admin/AdminSpotsView.vue'),
+  meta: { requiresAuth: true, role: 'admin' }
+},
+{
+  path: '/admin/reports',
+  name: 'AdminReports',
+  component: () => import('@/views/admin/AdminReportsView.vue'),
+  meta: { requiresAuth: true, role: 'admin' }
+},
+{
+  path: '/admin/stats',
+  name: 'AdminStats',
+  component: () => import('@/views/admin/AdminStatsView.vue'),
+  meta: { requiresAuth: true, role: 'admin' }
+},
+{
+  path: '/admin/chats',
+  name: 'AdminChats',
+  component: () => import('@/views/admin/AdminChatsView.vue'),
+  meta: { requiresAuth: true, role: 'admin' }
+}
   ]
 })
 

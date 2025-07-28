@@ -6,8 +6,8 @@ import '@splidejs/vue-splide/css/sea-green'
 
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { faUser, faFish, faMap, faUsers, faSun, faSignInAlt,faExclamationTriangle, faChartBar  } from '@fortawesome/free-solid-svg-icons'
-library.add(faUser, faFish, faMap, faUsers, faSun, faSignInAlt,faExclamationTriangle, faChartBar )
+import { faUser, faFish, faMap, faUsers, faSun, faSignInAlt,faExclamationTriangle, faChartBar,faComments,faPen, faTrash  } from '@fortawesome/free-solid-svg-icons'
+library.add(faUser, faFish, faMap, faUsers, faSun, faSignInAlt,faExclamationTriangle, faChartBar, faComments,faPen, faTrash)
 
 
 import App from './App.vue'
