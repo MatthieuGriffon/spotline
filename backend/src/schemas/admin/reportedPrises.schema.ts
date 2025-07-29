@@ -12,11 +12,13 @@ export const getReportedPrisesSchema = {
           id: Type.String(),
           pseudo: Type.String()
         }),
-        group: Type.Optional(Type.String()),
+        groupName: Type.Union([Type.String(), Type.Null()]),
         date: Type.String(),
         photoUrl: Type.String(),
-        description: Type.Optional(Type.String()),
-        signalementId: Type.String()
+        description: Type.Union([Type.String(), Type.Null()]),
+        signalementId: Type.String(),
+        reportsCount: Type.Number(),
+        reports: Type.Array(Type.String())
       })
     )
   }
