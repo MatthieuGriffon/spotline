@@ -13,6 +13,7 @@ import { accountSessionRoutes } from '@/routes/user/accountSession.route'
 import { updateLastSeenPlugin } from '@/plugins/updateLastSeen'
 import { adminStatsRoutes } from '@/routes/admin/statsRoutes.routes'
 import { reportedPrisesRoutes } from '@/routes/admin/reportedPrise.routes'
+import { moderationLogRoutes } from './routes/admin/moderationLog.routes'
 
 
 import fastifyStatic from '@fastify/static'
@@ -115,6 +116,8 @@ app.register(adminUserRoutes, { prefix: '/api' })
 app.register(avatarRoutes)
 app.register(adminStatsRoutes, { prefix: '/api/admin' })
 app.register(reportedPrisesRoutes, { prefix: '/api' })
+app.register(moderationLogRoutes, { prefix: '/api/admin'})
+
 
 
 

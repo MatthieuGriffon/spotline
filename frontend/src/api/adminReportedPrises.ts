@@ -12,10 +12,11 @@ export async function fetchReportedPrises(): Promise<ReportedPrise[]> {
 
   const data: ReportedPrise[] = await res.json()
 
-  // 💥 Ces logs sont là pour traquer le champ `reports`
+if (data.length > 0) {
   console.log('[DEBUG] Object keys:', Object.keys(data[0]))
   console.log('[DEBUG] reports field exists:', 'reports' in data[0])
   console.log('[DEBUG] reports value:', data[0]['reports'])
+}
 
   console.log('[DEBUG] Réponse brute API prises signalées :', data)
   return data
@@ -23,6 +24,7 @@ export async function fetchReportedPrises(): Promise<ReportedPrise[]> {
 
 // ✏️ Modérer une prise (masquer, supprimer, ignorer)
 export async function moderateReportedPrise(priseId: string, payload: ModeratePrisePayload): Promise<void> {
+  console.debug('[DEBUG] Envoi modération', priseId, payload)
   const res = await fetch(`${BASE_API_URL}/admin/reported-prises/${priseId}/moderate`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },

@@ -7,20 +7,22 @@ import { moderateReportedPrise } from '@/api/adminReportedPrises'
 const props = defineProps<{
   prise: ReportedPrise
 }>()
-
-const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'moderated', id: string): void
-}>()
-
 const action = ref<'mask' | 'delete' | 'ignore'>('mask')
 const isLoading = ref(false)
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'moderated', payload: { id: string; action: 'mask' | 'delete' | 'ignore' }): void
+}>()
+
 
 async function handleModeration() {
   isLoading.value = true
   try {
-    await moderateReportedPrise(props.prise.id, { action: action.value })
-    emit('moderated', props.prise.id)
+  await moderateReportedPrise(props.prise.priseId, { action: action.value })
+emit('moderated', {
+  id: props.prise.priseId,
+  action: action.value
+})
     emit('close')
   } catch (err) {
     console.error('Erreur de modération de la prise :', err)
@@ -32,6 +34,10 @@ async function handleModeration() {
 
 <template>
   <AppModal @close="emit('close')">
+    <p><strong>Signalements :</strong></p>
+<ul class="report-list">
+  <li v-for="(msg, i) in prise.reports" :key="i">– {{ msg }}</li>
+</ul>
     <template #title>Modérer une prise</template>
 
     <div class="prise-info">

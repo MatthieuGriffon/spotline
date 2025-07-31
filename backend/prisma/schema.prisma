@@ -31,6 +31,7 @@ model User {
   preferences          UserPreferences?
   spots                Spot[]
   reports              Report[]
+  moderationLogs       ModerationLog[]
 
 }
 
@@ -97,6 +98,7 @@ model Prise {
 
   createdAt DateTime @default(now())
   reports   Report[]
+  moderationLogs ModerationLog[]
 }
 
 model Spot {
@@ -216,4 +218,22 @@ enum ReportType {
   USER
   PRISE
   SPOT
+}
+
+model ModerationLog {
+  id        String           @id @default(cuid())
+  action    ModerationAction
+  priseId   String
+  prise     Prise?           @relation(fields: [priseId], references: [id])
+  priseEspece String?
+  userPseudo String?
+  adminId   String
+  admin     User             @relation(fields: [adminId], references: [id])
+  createdAt DateTime         @default(now())
+}
+
+enum ModerationAction {
+  mask
+  delete
+  ignore
 }

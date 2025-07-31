@@ -3,10 +3,14 @@ import { ref, onMounted } from 'vue'
 import type { ReportedPrise } from '@/types/reportedPrise'
 import { fetchReportedPrises } from '@/api/adminReportedPrises'
 import ModeratePriseModal from '@/components/admin/catches/ModeratePriseModal.vue'
+import ModerationLogs from '@/components/admin/moderations/ModerationLogs.vue'
+
 
 const prises = ref<ReportedPrise[]>([])
 const selectedPrise = ref<ReportedPrise | null>(null)
 const isLoading = ref(true)
+const moderationMessage = ref<string | null>(null)
+const moderationLogsRef = ref<InstanceType<typeof ModerationLogs> | null>(null)
 
 onMounted(async () => {
   try {
@@ -25,13 +29,21 @@ function openModeration(prise: ReportedPrise) {
   selectedPrise.value = prise
 }
 
-function handleModerationDone(id: string) {
-  prises.value = prises.value.filter(p => p.id !== id)
+function handleModerationDone(payload: { id: string; action: 'mask' | 'delete' | 'ignore' }) {
+  prises.value = prises.value.filter(p => p.id !== payload.id)
+  moderationMessage.value = `Prise ${{
+    mask: 'masquée',
+    delete: 'supprimée',
+    ignore: 'marquée comme traitée'
+  }[payload.action]} avec succès.`
+  moderationLogsRef.value?.refresh()
+  setTimeout(() => (moderationMessage.value = null), 4000)
 }
 </script>
 <template>
   <div class="admin-catches">
     <h2>Prises signalées</h2>
+    <p v-if="moderationMessage" class="moderation-msg">{{ moderationMessage }}</p>
 
     <div v-if="isLoading" class="loading">Chargement…</div>
     <div v-else-if="prises.length === 0" class="empty">Aucune prise signalée.</div>
@@ -58,6 +70,7 @@ function handleModerationDone(id: string) {
       @close="selectedPrise = null"
       @moderated="handleModerationDone"
     />
+    <ModerationLogs ref="moderationLogsRef" />
   </div>
 </template>
 
@@ -145,6 +158,13 @@ function handleModerationDone(id: string) {
       opacity: 0.6;
       cursor: not-allowed;
     }
+  }
+  .moderation-msg {
+     text-align: center;
+  font-size: var(--font-sm);
+  color: var(--color-success);
+  margin-bottom: var(--space-sm);
+  animation: fadeIn 0.3s ease-out;
   }
 }
 </style>

@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { FastifyRequest } from 'fastify'
-
+import '@fastify/session'
 declare module 'fastify' {
   interface FastifyInstance {
     prisma: PrismaClient
@@ -26,5 +26,14 @@ declare module 'fastify' {
   pseudo: string
   role: 'USER' | 'ADMIN'
 }
+  interface SessionData {
+    user?: {
+      id: string
+      email: string
+      pseudo: string
+      role: 'USER' | 'ADMIN'
+    }
+    accountSessionId?: string
+  }
   
 }

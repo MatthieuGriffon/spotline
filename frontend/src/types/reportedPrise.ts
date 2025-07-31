@@ -11,7 +11,7 @@ export interface ReportedPrise {
   description: string | null
   signalementId: string
   reportsCount: number
-  reports: string[] // ← CETTE LIGNE MANQUE SÛREMENT
+  reports: string[]
 }
 export interface ModeratePrisePayload {
   action: 'mask' | 'delete' | 'ignore'

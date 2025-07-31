@@ -1,9 +1,13 @@
-import { FastifyInstance } from 'fastify'
+import { FastifyInstance, FastifyRequest } from 'fastify'
 
 
 export async function getReportedPrises(fastify: FastifyInstance) {
   const reports = await fastify.prisma.report.findMany({
-    where: { type: 'PRISE', resolved: false },
+    where: {
+      type: 'PRISE',
+      resolved: false,
+      prise: { isNot: null } // ✅ Sécurisation des relations manquantes
+    },
     include: {
       prise: {
         include: {
@@ -28,28 +32,28 @@ export async function getReportedPrises(fastify: FastifyInstance) {
     grouped.map(r => [r.priseId, r._count])
   )
 
-  const result = reports.map(report => {
-    const msgList = report.prise?.reports.map(r => r.message).filter(Boolean) || []
+  const result = reports
+    .filter(r => r.prise) // 🔐 Sécurité supplémentaire
+    .map(report => {
+      const prise = report.prise!
+      const msgList = prise.reports.map(r => r.message).filter(Boolean)
 
-    console.log('🔁 [DEBUG] mapping report id:', report.id)
-    console.log('📨 messages:', msgList)
-
-    return {
-      id: report.id,
-      priseId: report.prise?.id!,
-      user: {
-        id: report.prise?.user.id!,
-        pseudo: report.prise?.user.pseudo!
-      },
-      groupName: report.prise?.group?.name || null,
-      date: report.prise?.date.toISOString(),
-      photoUrl: report.prise?.photoUrl!,
-      description: report.prise?.description || null,
-      signalementId: report.id,
-      reportsCount: countsMap[report.prise?.id || ''] || 1,
-      reports: msgList // ← 🔥 enfin inclus proprement
-    }
-  })
+      return {
+        id: report.id,
+        priseId: prise.id,
+        user: {
+          id: prise.user.id,
+          pseudo: prise.user.pseudo
+        },
+        groupName: prise.group?.name || null,
+        date: prise.date.toISOString(),
+        photoUrl: prise.photoUrl,
+        description: prise.description || null,
+        signalementId: report.id,
+        reportsCount: countsMap[prise.id] || 1,
+        reports: msgList
+      }
+    })
 
   console.log('✅ [DEBUG] final result:', JSON.stringify(result, null, 2))
   return result
@@ -57,10 +61,26 @@ export async function getReportedPrises(fastify: FastifyInstance) {
 
 
 export async function moderatePrise(
-  fastify: FastifyInstance,
-  priseId: string,
+  request: FastifyRequest<{ Params: { priseId: string } }>,
   action: 'mask' | 'delete' | 'ignore'
 ) {
+  const fastify = request.server
+  const adminId = request.session?.user?.id
+  const priseId = request.params.priseId
+
+  if (!adminId) {
+    throw fastify.httpErrors.unauthorized('Admin non authentifié')
+  }
+
+  let prise = await fastify.prisma.prise.findUnique({
+    where: { id: priseId },
+    include: { user: true }
+  })
+
+  if (!prise && action !== 'delete') {
+    throw fastify.httpErrors.notFound('Prise introuvable')
+  }
+
   switch (action) {
     case 'mask':
       await fastify.prisma.prise.update({
@@ -70,12 +90,13 @@ export async function moderatePrise(
       break
 
     case 'delete':
-      await fastify.prisma.prise.delete({
-        where: { id: priseId }
-      })
+      await fastify.prisma.report.deleteMany({ where: { priseId } })
+      await fastify.prisma.moderationLog.deleteMany({ where: { priseId } })
+      await fastify.prisma.prise.delete({ where: { id: priseId } })
       break
 
     case 'ignore':
+      // Pas de modification directe sur la prise
       break
 
     default:
@@ -90,4 +111,19 @@ export async function moderatePrise(
     },
     data: { resolved: true }
   })
+
+  // Ne log que si la prise n’a pas été supprimée
+  if (action !== 'delete') {
+    await fastify.prisma.moderationLog.create({
+  data: {
+    action,
+    adminId,
+    priseId,
+    priseEspece: prise?.espece,
+    userPseudo: prise?.user.pseudo
+  }
+})
+  }
+
+  return { message: `Prise ${action} avec succès.` }
 }

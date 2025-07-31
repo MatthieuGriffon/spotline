@@ -14,9 +14,9 @@ export async function reportedPrisesRoutes(fastify: FastifyInstance) {
     handler: getReportedPrisesController
   })
 
-  fastify.put('/admin/reported-prises/:priseId/moderate', {
-    preHandler: [requireAuth, adminGuard],
-    schema: moderatePriseSchema,
-    handler: moderatePriseController
-  })
+fastify.put('/admin/reported-prises/:priseId/moderate', {
+  preHandler: [requireAuth, adminGuard],
+  schema: moderatePriseSchema,
+  handler: moderatePriseController
+})
 }

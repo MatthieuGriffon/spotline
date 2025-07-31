@@ -6,10 +6,11 @@ export async function getReportedPrisesController(req: FastifyRequest, reply: Fa
   reply.send(data)
 }
 
-export async function moderatePriseController(req: FastifyRequest<{ Params: { priseId: string }, Body: { action: 'mask' | 'delete' | 'ignore' } }>, reply: FastifyReply) {
-  const { priseId } = req.params
+export async function moderatePriseController(
+  req: FastifyRequest<{ Params: { priseId: string }, Body: { action: 'mask' | 'delete' | 'ignore' } }>,
+  reply: FastifyReply
+) {
   const { action } = req.body
-
-  await moderatePrise(req.server, priseId, action)
-  reply.send({ message: 'Action effectuée avec succès' })
+  const result = await moderatePrise(req, action)
+  reply.send(result)
 }
