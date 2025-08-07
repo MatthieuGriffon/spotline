@@ -3,7 +3,6 @@ import { ref, onMounted } from 'vue'
 import { fetchUserDashboard } from '@/api/dashboard'
 import type { UserDashboardResponseType } from '@/types/dashboard'
 
-
 const dashboardData = ref<UserDashboardResponseType | null>(null)
 const isLoading = ref(true)
 const error = ref<string | null>(null)
@@ -13,42 +12,40 @@ const actionCards = [
     subtitle: 'Modifier mon pseudo, mon email ou mon mot de passe',
     cta: 'Gérer mon profil',
     icon: 'user-circle',
-    link: '/profil/mes-infos'
+    link: '/profile/info',
   },
   {
     title: 'Mes prises',
     subtitle: 'Voir toutes mes prises',
     cta: 'Accéder',
     icon: 'fish',
-    link: '/prises'
+    link: '/catches', // anciennement "/prises"
   },
   {
     title: 'Mes sessions',
     subtitle: 'Mes prochaines sessions de pêche',
     cta: 'Voir les sessions',
     icon: 'calendar-alt',
-    link: '/sessions'
+    link: '/sessions',
   },
   {
     title: 'Mes groupes',
     subtitle: 'Accéder à mes groupes de pêche',
     cta: 'Voir les groupes',
     icon: 'users',
-    link: '/groupes'
+    link: '/groups', // anciennement "/groupes"
   },
   {
     title: 'Carte interactive',
     subtitle: 'Explorer les spots sur la carte',
     cta: 'Voir la carte',
     icon: 'map',
-    link: '/carte'
-  }
+    link: '/map', // anciennement "/carte"
+  },
 ]
 onMounted(async () => {
   isLoading.value = true
   error.value = null
-
- 
 
   try {
     dashboardData.value = await fetchUserDashboard()
@@ -76,7 +73,7 @@ onMounted(async () => {
           <h2>Bienvenue {{ dashboardData.user.pseudo }}</h2>
           <p>Heureux de te revoir sur Spotline.</p>
           <img
-            v-if="dashboardData.user.imageUrl"
+            loading="lazy"
             :src="dashboardData.user.imageUrl"
             alt="Avatar utilisateur"
             class="avatar"
@@ -96,7 +93,7 @@ onMounted(async () => {
                 opacity: 1,
                 y: 0,
                 scale: 1,
-                transition: { delay: index * 100, duration: 400 }
+                transition: { delay: index * 100, duration: 400 },
               }"
             >
               <font-awesome-icon :icon="card.icon" class="icon" />
@@ -108,7 +105,10 @@ onMounted(async () => {
             </router-link>
 
             <router-link
-              v-if="dashboardData.stats?.sessionsWaitingReply && dashboardData.stats.sessionsWaitingReply > 0"
+              v-if="
+                dashboardData.stats?.sessionsWaitingReply &&
+                dashboardData.stats.sessionsWaitingReply > 0
+              "
               to="/sessions"
               class="card"
               v-motion
@@ -119,8 +119,8 @@ onMounted(async () => {
                 scale: 1,
                 transition: {
                   delay: actionCards.length * 100,
-                  duration: 400
-                }
+                  duration: 400,
+                },
               }"
             >
               <font-awesome-icon icon="question-circle" class="icon" />
@@ -157,37 +157,36 @@ onMounted(async () => {
           <h3>Mes sessions récentes</h3>
           <ul>
             <li v-for="session in dashboardData.recentSessions" :key="session.id">
-              {{ session.title }} – {{ new Date(session.date).toLocaleDateString() }}
-              ({{ session.role }})
+              {{ session.title }} – {{ new Date(session.date).toLocaleDateString() }} ({{
+                session.role
+              }})
             </li>
           </ul>
         </section>
-    <Motion
-  tag="section"
-  class="section-block stats"
-  v-if="dashboardData.stats"
-  :initial="{ opacity: 0, y: 30 }"
-  :visibleOnce="{ opacity: 1, y: 0, transition: { duration: 0.5 } }"
->
-  <h3>Statistiques</h3>
+        <Motion
+          tag="section"
+          class="section-block stats"
+          v-if="dashboardData.stats"
+          :initial="{ opacity: 0, y: 30 }"
+          :visibleOnce="{ opacity: 1, y: 0, transition: { duration: 0.5 } }"
+        >
+          <h3>Statistiques</h3>
 
-  
-  <div class="stats-table">
-    <div class="row">
-      <span class="label">🎣 Prises totales</span>
-      <span class="value">{{ dashboardData.stats.prisesCount }}</span>
-    </div>
-    <div class="row">
-      <span class="label">👥 Groupes rejoints</span>
-      <span class="value">{{ dashboardData.stats.groupsCount }}</span>
-    </div>
-    <div class="row">
-      <span class="label">📅 Sessions à confirmer</span>
-      <span class="value">{{ dashboardData.stats.sessionsWaitingReply }}</span>
-    </div>
-  </div>
-</Motion>
-    
+          <div class="stats-table">
+            <div class="row">
+              <span class="label">🎣 Prises totales</span>
+              <span class="value">{{ dashboardData.stats.prisesCount }}</span>
+            </div>
+            <div class="row">
+              <span class="label">👥 Groupes rejoints</span>
+              <span class="value">{{ dashboardData.stats.groupsCount }}</span>
+            </div>
+            <div class="row">
+              <span class="label">📅 Sessions à confirmer</span>
+              <span class="value">{{ dashboardData.stats.sessionsWaitingReply }}</span>
+            </div>
+          </div>
+        </Motion>
       </div>
     </div>
 
@@ -295,7 +294,6 @@ onMounted(async () => {
       text-decoration: underline;
     }
   }
-  
 }
 .card-inner {
   display: flex;

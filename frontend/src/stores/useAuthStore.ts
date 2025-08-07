@@ -1,14 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { loginUser, registerUser, getMe, logoutUser } from '@/api/auth'
+import { getUserMe } from '@/api/user'
 
 export interface User {
   id: string
   email: string
   pseudo: string
-  imageUrl?: string
+  role: 'USER' | 'ADMIN'
+  imageUrl: string | null
   isConfirmed: boolean
-  role: 'user' | 'admin'
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -25,7 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const data = await loginUser(email, password)
       await fetchMe()
-      console.log('[DEBUG] user après login:', user.value)
+      console.debug('[DEBUG] user après login:', user.value)
 
       successMessage.value = data.message || 'Connexion réussie'
     } catch (err: any) {
@@ -52,9 +53,20 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function fetchMe() {
     try {
-      const data = await getMe()
-      user.value = data
-    } catch {
+      const data = await getUserMe()
+      console.debug('[DEBUG] Résultat fetchMe:', data)
+
+      // Sécuriser les champs imageUrl et isConfirmed
+      user.value = {
+        id: data.id,
+        email: data.email,
+        pseudo: data.pseudo,
+        role: data.role === 'admin' ? 'ADMIN' : 'USER',
+        imageUrl: data.imageUrl ?? null,
+        isConfirmed: data.isConfirmed ?? false,
+      }
+    } catch (err) {
+      console.warn('[WARN] fetchMe error:', err)
       user.value = null
     }
   }
@@ -82,6 +94,6 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     fetchMe,
     logout,
-    setUser
+    setUser,
   }
 })

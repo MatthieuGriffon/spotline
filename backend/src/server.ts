@@ -14,6 +14,7 @@ import { updateLastSeenPlugin } from '@/plugins/updateLastSeen'
 import { adminStatsRoutes } from '@/routes/admin/statsRoutes.routes'
 import { reportedPrisesRoutes } from '@/routes/admin/reportedPrise.routes'
 import { moderationLogRoutes } from './routes/admin/moderationLog.routes'
+import { dashboardRoutes } from './routes/dashboard/dashboard.routes'
 
 
 import fastifyStatic from '@fastify/static'
@@ -48,7 +49,7 @@ import multipart from '@fastify/multipart'
 
 // Register plugins
 app.register(fastifyStatic, {
-  root: path.join(__dirname, '../uploads'),
+  root: path.join(__dirname, '../../uploads'),
   prefix: '/uploads/',
 })
 app.register(fastifyCookie)
@@ -117,7 +118,7 @@ app.register(avatarRoutes)
 app.register(adminStatsRoutes, { prefix: '/api/admin' })
 app.register(reportedPrisesRoutes, { prefix: '/api' })
 app.register(moderationLogRoutes, { prefix: '/api/admin'})
-
+app.register(dashboardRoutes, { prefix: '/api' })
 
 
 

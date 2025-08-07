@@ -58,14 +58,16 @@ export async function loginUser(fastify: FastifyInstance, email: string, passwor
 
   const isValid = await verifyPassword(password, user.hashedPwd)
   if (!isValid) throw fastify.httpErrors.unauthorized('Email ou mot de passe invalide')
-
+    
   return {
     id: user.id,
     email: user.email,
     pseudo: user.pseudo,
     role: user.role,
     imageUrl: user.imageUrl,
+    isConfirmed: user.isConfirmed,
   }
+  
 }
 
 export async function changePassword(

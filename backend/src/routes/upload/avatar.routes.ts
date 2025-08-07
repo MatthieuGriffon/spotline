@@ -1,9 +1,13 @@
 import { FastifyPluginAsync } from 'fastify'
 import path from 'path'
 import fs from 'fs/promises'
+import { fileURLToPath } from "url";
 
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const avatarRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/uploads/avatar/:filename', {
+  fastify.get('/uploads/avatars/:filename', {
     schema: {
       tags: ['user'],
       summary: 'Récupérer un avatar',
