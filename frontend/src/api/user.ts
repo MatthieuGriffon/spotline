@@ -51,3 +51,14 @@ export async function requestEmailChange(newEmail: string) {
   if (!res.ok) throw new Error('Échec de la demande de changement d’email')
   return await res.json()
 }
+
+export async function confirmEmail(token: string) {
+  const res = await fetch(`${BASE_API_URL}/auth/confirm/${encodeURIComponent(token)}`, {
+    credentials: 'include',
+  })
+  if (!res.ok) {
+    const msg = await res.text().catch(() => '')
+    throw new Error(msg || 'Confirmation email échouée')
+  }
+  return res.json()
+}

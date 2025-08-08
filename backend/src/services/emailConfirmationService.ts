@@ -1,47 +1,49 @@
-import { FastifyInstance } from 'fastify'
+import { FastifyInstance } from "fastify";
 
-export async function confirmEmailToken(fastify: FastifyInstance, token: string) {
-  const record = await fastify.prisma.emailConfirmationToken.findUnique({
-    where: { token },
-    include: { user: true },
-  })
+export async function confirmEmailToken(
+  fastify: FastifyInstance,
+  token: string
+) {
+  const now = new Date();
 
-  if (!record) {
-    throw fastify.httpErrors.notFound('Token invalide ou expiré')
+  const result = await fastify.prisma.$transaction(async (tx) => {
+    const entry = await tx.emailConfirmationToken.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+
+    if (!entry || entry.expiresAt < now) {
+      // Idempotent: supprime silencieusement si présent
+      await tx.emailConfirmationToken.deleteMany({ where: { token } });
+      return { ok: false as const, message: "Token invalide ou expiré" };
+    }
+
+    const u = entry.user;
+    const updated = await tx.user.update({
+      where: { id: u.id },
+      data: u.pendingEmail
+        ? { email: u.pendingEmail, pendingEmail: null, isConfirmed: true }
+        : { isConfirmed: true },
+    });
+
+    // Idempotent aussi ici
+    await tx.emailConfirmationToken.deleteMany({ where: { token } });
+
+    return {
+      ok: true as const,
+      message: u.pendingEmail
+        ? "Nouvelle adresse email confirmée."
+        : "Compte confirmé.",
+      user: updated,
+    };
+  });
+
+  if (!result.ok) {
+    throw fastify.httpErrors.badRequest(result.message);
   }
 
-  if (record.expiresAt < new Date()) {
-    await fastify.prisma.emailConfirmationToken.delete({ where: { token } })
-    throw fastify.httpErrors.badRequest('Token expiré')
-  }
+  fastify.log.info(`[AUTH] ${result.message} pour ${result.user.email} ✉️`);
 
-  const user = record.user
-
-  await fastify.prisma.$transaction([
-    fastify.prisma.user.update({
-      where: { id: user.id },
-      data: user.pendingEmail
-        ? {
-            email: user.pendingEmail,
-            pendingEmail: null
-          }
-        : {
-            isConfirmed: true
-          }
-    }),
-    fastify.prisma.emailConfirmationToken.delete({
-      where: { token }
-    })
-  ])
-
-  const finalUser = await fastify.prisma.user.findUniqueOrThrow({
-    where: { id: user.id }
-  })
-
-  const { id, email, role, pseudo } = finalUser
-  fastify.log.info(`[AUTH] ${user.pendingEmail ? 'Changement d’email' : 'Activation'} de ${email} confirmé ✉️`)
-
-  return {
-    user: { id, email, role, pseudo }
-  }
+  const { id, email, role, pseudo, imageUrl, isConfirmed } = result.user;
+  return { user: { id, email, role, pseudo, imageUrl, isConfirmed } };
 }

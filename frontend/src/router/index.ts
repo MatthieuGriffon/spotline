@@ -83,6 +83,7 @@ const router = createRouter({
       component: () => import('@/views/admin/AdminChatsView.vue'),
       meta: { requiresAuth: true, role: 'admin' },
     },
+    { path: '/auth/confirm/:token?', name: 'AuthConfirm', component: () => import('@/views/authconfirm/AuthConfirmView.vue') }
   ],
 })
 

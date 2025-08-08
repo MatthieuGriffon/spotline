@@ -203,36 +203,19 @@ export async function resetPassword(fastify : FastifyInstance, token: string, ne
   ])
   return true
 }
-export async function requestEmailChange(
-  fastify: FastifyInstance,
-  userId: string,
-  newEmail: string
-) {
+// services/auth/auth.service.ts
+export async function requestEmailChange(fastify: FastifyInstance, userId: string, newEmail: string) {
   const existing = await fastify.prisma.user.findUnique({ where: { email: newEmail } })
-  if (existing) {
-    throw fastify.httpErrors.conflict('Cet email est déjà utilisé.')
-  }
+  if (existing) throw fastify.httpErrors.conflict('Cet email est déjà utilisé.')
 
-  // Stocker l'email en attente
-  await fastify.prisma.user.update({
-    where: { id: userId },
-    data: { pendingEmail: newEmail }
-  })
+  await fastify.prisma.user.update({ where: { id: userId }, data: { pendingEmail: newEmail } })
 
-  // Générer un token de confirmation
   const token = randomUUID()
-  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24h
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24)
 
-  await fastify.prisma.emailConfirmationToken.create({
-    data: {
-      token,
-      userId,
-      expiresAt
-    }
-  })
-
-  const confirmUrl = `${process.env.APP_ORIGIN}/auth/confirm/${token}`
-
+  await fastify.prisma.emailConfirmationToken.create({ data: { token, userId, expiresAt } })
+   const frontBase = process.env.PUBLIC_FRONTEND_URL ?? 'http://localhost:5173'
+   const confirmUrl = `${frontBase}/auth/confirm?token=${token}`
   await fastify.email.sendMail({
     to: newEmail,
     subject: 'Confirme ton nouveau mail Spotline',
