@@ -26,14 +26,18 @@ export async function getUserDashboardData(fastify: FastifyInstance, userId: str
       }
     }),
 
-    fastify.prisma.prise.findMany({
-      where: { userId },
-      orderBy: { date: 'desc' },
-      take: 3,
+   fastify.prisma.prise.findMany({
+  where: { userId },
+  orderBy: { date: 'desc' },
+  take: 3,
+  include: {
+    groupes: {
       include: {
         group: { select: { name: true } }
       }
-    }),
+    }
+  }
+}),
 
     fastify.prisma.session.findMany({
       where: { organizerId: userId },
@@ -72,13 +76,13 @@ export async function getUserDashboardData(fastify: FastifyInstance, userId: str
     memberCount: group.members.length
   }))
 
-  const recentPrisesFormatted = recentPrises.map(prise => ({
-    id: prise.id,
-    photoUrl: prise.photoUrl,
-    espece: prise.espece,
-    date: prise.date.toISOString(),
-    groupName: prise.group?.name
-  }))
+ const recentPrisesFormatted = recentPrises.map((prise) => ({
+   id: prise.id,
+   photoUrl: prise.photoUrl,
+   espece: prise.espece,
+   date: prise.date.toISOString(),
+   groupNames: prise.groupes.map((pg) => pg.group.name), // tableau de noms
+ }));
 
   const recentSessionsOrganized = sessionOrganized.map(session => ({
     id: session.id,

@@ -6,14 +6,6 @@ import {
   isGroupAdmin,
 } from "@/services/access/groupAccess.service";
 
-export async function listMyGroups(fastify: FastifyInstance, userId: string) {
-  return fastify.prisma.group.findMany({
-    where: { members: { some: { userId } } },
-    include: { members: { select: { userId: true, role: true } } },
-    orderBy: { createdAt: "desc" },
-  });
-}
-
 export async function createGroup(
   fastify: FastifyInstance,
   userId: string,
@@ -21,7 +13,7 @@ export async function createGroup(
 ) {
   return fastify.prisma.$transaction(async (tx) => {
     const group = await tx.group.create({
-      data: { name: data.name, description: data.description ?? null },
+      data: { name: data.name, description: data.description ?? null, creatorId: userId },
     });
     // créateur admin
     await tx.groupMember.create({
@@ -165,11 +157,10 @@ export async function deleteGroup(
   userId: string,
   groupId: string
 ) {
-  // Seul le créateur peut supprimer le groupe (cf. règles métier)
   await assertAdmin(fastify, groupId, userId);
   const creator = await fastify.prisma.groupMember.findFirst({
     where: { groupId, role: "admin" },
-    orderBy: { joinedAt: "asc" }, // premier admin = créateur
+    orderBy: { joinedAt: "asc" },
   });
   if (!creator || creator.userId !== userId)
     throw fastify.httpErrors.forbidden(
@@ -178,8 +169,27 @@ export async function deleteGroup(
 
   return fastify.prisma.$transaction(async (tx) => {
     await tx.groupMember.deleteMany({ where: { groupId } });
-    await tx.session.deleteMany({ where: { groupId } }); // si modèle Session lié
-    await tx.prise.updateMany({ where: { groupId }, data: { groupId: null } }); // détacher prises
+    await tx.session.deleteMany({ where: { groupId } });
+    await tx.priseGroup.deleteMany({ where: { groupId } }); // ✅ Correction
     return tx.group.delete({ where: { id: groupId } });
   });
+}
+
+export async function getMyGroups(fastify: FastifyInstance, userId: string) {
+  const groups = await fastify.prisma.group.findMany({
+    where: { members: { some: { userId } } },
+    include: {
+      members: { select: { userId: true, role: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return groups.map((g) => ({
+    id: g.id,
+    name: g.name,
+    description: g.description,
+    createdAt: g.createdAt.toISOString(),
+    memberCount: g.members.length, // ✅ calculé ici
+    role: g.members.find((m) => m.userId === userId)?.role || "member",
+  }));
 }

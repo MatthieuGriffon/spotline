@@ -7,6 +7,8 @@ import sensible from '@fastify/sensible'
 import authRoutes from '@/routes/auth/auth'
 import userRoutes from '@/routes/user/user.routes'
 import avatarRoutes from '@/routes/upload/avatar.routes'
+import groupesRoutes from '@/routes/groupes/groupes.routes'
+
 import { adminUserRoutes } from '@/routes/admin/userRoutes.routes'
 import { initAdmin } from '@/scripts/init-admin'
 import { accountSessionRoutes } from '@/routes/user/accountSession.route'
@@ -119,7 +121,7 @@ app.register(adminStatsRoutes, { prefix: '/api/admin' })
 app.register(reportedPrisesRoutes, { prefix: '/api' })
 app.register(moderationLogRoutes, { prefix: '/api/admin'})
 app.register(dashboardRoutes, { prefix: '/api' })
-
+app.register(groupesRoutes, { prefix: '/api/groupes' })
 
 
 // listen on port 3000
