@@ -115,38 +115,40 @@ export async function changePassword(
   return true
 }
 
-export async function confirmPasswordChange(fastify: FastifyInstance, token: string) {
+export async function confirmPasswordChange(
+  fastify: FastifyInstance,
+  token: string
+) {
   const record = await fastify.prisma.passwordChangeToken.findUnique({
     where: { token },
     include: { user: true },
-  })
+  });
 
-  if (!record) {
-    throw fastify.httpErrors.notFound('Token invalide ou expiré')
-  }
+  if (!record) throw fastify.httpErrors.notFound("Token invalide ou expiré");
 
   if (record.expiresAt < new Date()) {
-    await fastify.prisma.passwordChangeToken.delete({ where: { token } })
-    throw fastify.httpErrors.badRequest('Token expiré')
+    await fastify.prisma.passwordChangeToken.delete({ where: { token } });
+    throw fastify.httpErrors.badRequest("Token expiré");
   }
 
+  // 1) Applique le nouveau hash + supprime le token
   await fastify.prisma.$transaction([
     fastify.prisma.user.update({
       where: { id: record.userId },
-      data: { hashedPwd: record.newHashedPwd },
+      data: {
+        hashedPwd: record.newHashedPwd /* , passwordChangedAt: new Date() */,
+      },
     }),
-    fastify.prisma.passwordChangeToken.delete({
-      where: { token },
-    }),
-  ])
+    fastify.prisma.passwordChangeToken.delete({ where: { token } }),
+  ]);
 
-  return {
-    id: record.user.id,
-    email: record.user.email,
-    pseudo: record.user.pseudo,
-    role: record.user.role,
-    imageUrl: record.user.imageUrl,
-  }
+  // 2) Révoque toutes les sessions de cet utilisateur
+  await fastify.prisma.accountSession.deleteMany({
+    where: { userId: record.userId },
+  });
+
+  // ⚠️ Le clear du cookie se fait côté contrôleur (reply.clearCookie)
+  return { message: "Mot de passe confirmé. Veuillez vous reconnecter." };
 }
 
 export async function forgotPassword(fastify: FastifyInstance, email: string) {
@@ -178,30 +180,41 @@ export async function forgotPassword(fastify: FastifyInstance, email: string) {
   })
 }
 
-export async function resetPassword(fastify : FastifyInstance, token: string, newPassword: string) {
+export async function resetPassword(
+  fastify: FastifyInstance,
+  token: string,
+  newPassword: string
+) {
   const record = await fastify.prisma.passwordResetToken.findUnique({
     where: { token },
     include: { user: true },
-  })
+  });
 
-  if (!record) throw fastify.httpErrors.notFound('Token invalide ou expiré')
+  if (!record) throw fastify.httpErrors.notFound("Token invalide ou expiré");
   if (record.expiresAt < new Date()) {
-    await fastify.prisma.passwordResetToken.delete({ where: { token } })
-    throw fastify.httpErrors.badRequest('Token expiré')
+    await fastify.prisma.passwordResetToken.delete({ where: { token } });
+    throw fastify.httpErrors.badRequest("Token expiré");
   }
 
-  const hashedPwd = await hashPassword(newPassword)
+  const hashedPwd = await hashPassword(newPassword);
 
   await fastify.prisma.$transaction([
     fastify.prisma.user.update({
       where: { id: record.userId },
-      data: { hashedPwd },
+      data: {
+        hashedPwd,
+        // passwordChangedAt: new Date(), // si tu ajoutes ce champ (recommandé)
+      },
     }),
-    fastify.prisma.passwordResetToken.delete({
-      where: { token },
+    // ⬇️ Révoquer toutes les sessions de l'utilisateur
+    fastify.prisma.accountSession.deleteMany({
+      where: { userId: record.userId },
     }),
-  ])
-  return true
+    // Supprimer le token
+    fastify.prisma.passwordResetToken.delete({ where: { token } }),
+  ]);
+
+  return { message: "Mot de passe réinitialisé. Veuillez vous reconnecter." };
 }
 // services/auth/auth.service.ts
 export async function requestEmailChange(fastify: FastifyInstance, userId: string, newEmail: string) {

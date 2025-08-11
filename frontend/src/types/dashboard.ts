@@ -31,6 +31,8 @@ export type UserDashboardResponseType = {
     pseudo: string
     imageUrl?: string
     isConfirmed: boolean
+    imageUpdatedAt?: string // ← ajouté
+    updatedAt?: string // ← ajouté
   }
   recentGroups: DashboardGroup[]
   recentPrises: DashboardPrise[]

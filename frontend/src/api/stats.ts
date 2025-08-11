@@ -1,8 +1,9 @@
 import { BASE_API_URL } from '@/api/config'
+import type { AdminStats } from '@/types/admin'
 
-export async function fetchAdminStats() {
+export async function fetchAdminStats(): Promise<AdminStats> {
   const res = await fetch(`${BASE_API_URL}/admin/stats`, {
-    credentials: 'include'
+    credentials: 'include',
   })
 
   if (!res.ok) {

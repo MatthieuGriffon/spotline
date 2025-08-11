@@ -18,19 +18,16 @@ const email = ref('')
 const newEmail = ref('')
 const isConfirmed = ref(false)
 
-const avatarUrl = ref<string | null>(null)       // affichée
-const avatarFile = ref<File | null>(null)        // source brute
-let previewObjectUrl: string | null = null       // pour revoke
+const avatarUrl = ref<string | null>(null) // affichée
+const avatarFile = ref<File | null>(null) // source brute
+let previewObjectUrl: string | null = null // pour revoke
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024 // 5 Mo (MVP)
-const ALLOWED_TYPES = ['image/jpeg', 'image/png'] // pas de webp pour coller aux règles MVP
-// (Uploads: JPEG/PNG, 5 Mo, redimension server) — cf. cahier des charges. 
+const ALLOWED_TYPES = ['image/jpeg', 'image/png']
 
 onMounted(async () => {
   try {
-    console.debug('[DEBUG] onMounted → fetchMe()')
     await authStore.fetchMe()
-    console.debug('[DEBUG] user depuis authStore après fetchMe:', authStore.user)
 
     if (authStore.user) {
       pseudo.value = authStore.user.pseudo
@@ -58,7 +55,8 @@ onBeforeUnmount(() => {
 })
 
 const canSave = computed(() => {
-  const pseudoChanged = authStore.user && pseudo.value.trim() && pseudo.value.trim() !== authStore.user.pseudo
+  const pseudoChanged =
+    authStore.user && pseudo.value.trim() && pseudo.value.trim() !== authStore.user.pseudo
   return Boolean(pseudoChanged || avatarFile.value)
 })
 async function saveProfile() {
@@ -89,8 +87,6 @@ async function saveProfile() {
     if (ops.length) {
       await Promise.all(ops)
     }
-
-    // Rafraîchir l'utilisateur pour récupérer la nouvelle imageUrl/pseudo
     await authStore.fetchMe()
 
     if (authStore.user?.imageUrl) {
@@ -101,8 +97,7 @@ async function saveProfile() {
     avatarFile.value = null
   } catch (err: unknown) {
     console.error('[ERREUR SAVE PROFILE]', err)
-    error.value =
-      err instanceof Error ? err.message : 'Échec de la mise à jour du profil.'
+    error.value = err instanceof Error ? err.message : 'Échec de la mise à jour du profil.'
   } finally {
     isSaving.value = false
     // Nettoyer l’URL de prévisualisation si besoin (en finally pour couvrir les erreurs)
@@ -155,7 +150,6 @@ function onAvatarChange(e: Event) {
 }
 </script>
 
-
 <template>
   <div class="profile-wrapper">
     <h2>Mon profil</h2>
@@ -188,12 +182,28 @@ function onAvatarChange(e: Event) {
 
         <label for="newEmail">Changer d’email</label>
         <div class="row">
-          <input id="newEmail" type="email" v-model="newEmail" :disabled="isSendingEmail || isSaving" />
+          <input
+            id="newEmail"
+            type="email"
+            v-model="newEmail"
+            :disabled="isSendingEmail || isSaving"
+          />
           <button type="button" @click="changeEmail" :disabled="isSendingEmail || !newEmail">
             {{ isSendingEmail ? 'Envoi…' : 'Envoyer le lien de confirmation' }}
           </button>
         </div>
-
+        <section class="section-block actions">
+          <div class="cards">
+            <router-link to="/profile/password" class="card" aria-label="Changer mon mot de passe">
+              <font-awesome-icon icon="key" class="icon" aria-hidden="true" />
+              <div class="content">
+                <div class="title">Changer mon mot de passe</div>
+                <div class="subtitle">Met à jour ton mot de passe en toute sécurité</div>
+                <div class="cta">Accéder</div>
+              </div>
+            </router-link>
+          </div>
+        </section>
         <button class="primary" @click="saveProfile" :disabled="isSaving || !canSave">
           {{ isSaving ? 'Enregistrement…' : 'Enregistrer' }}
         </button>
@@ -249,7 +259,9 @@ function onAvatarChange(e: Event) {
       background: var(--color-success);
       color: var(--color-text-inverted);
 
-      &.warn { background: var(--color-warning); }
+      &.warn {
+        background: var(--color-warning);
+      }
     }
   }
 
@@ -273,7 +285,9 @@ function onAvatarChange(e: Event) {
     color: var(--color-text);
     background: var(--color-surface);
 
-    &:disabled { opacity: 0.6; }
+    &:disabled {
+      opacity: 0.6;
+    }
   }
 
   button {
@@ -290,7 +304,10 @@ function onAvatarChange(e: Event) {
     &:hover:not(:disabled) {
       background-color: var(--color-primary-hover);
     }
-    &:disabled { opacity: 0.6; cursor: not-allowed; }
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
   }
 
   .avatar-block {
@@ -307,8 +324,13 @@ function onAvatarChange(e: Event) {
       border: 2px solid var(--color-border);
     }
 
-    input[type='file'] { font-size: var(--font-sm); }
-    .hint { font-size: var(--font-xs); opacity: 0.8; }
+    input[type='file'] {
+      font-size: var(--font-sm);
+    }
+    .hint {
+      font-size: var(--font-xs);
+      opacity: 0.8;
+    }
   }
 
   .feedback {
@@ -316,6 +338,83 @@ function onAvatarChange(e: Event) {
     color: var(--color-success);
     text-align: center;
   }
+  .profile-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+
+    .btn {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: var(--space-sm) var(--space-md);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      background: var(--color-surface);
+      font-weight: 500;
+      color: var(--color-text);
+      text-decoration: none;
+      &:hover {
+        background: var(--color-background-soft);
+      }
+      &.secondary {
+        color: var(--color-primary);
+        border-color: var(--color-primary);
+      }
+    }
+  }
+}
+.section-block {
+  margin-bottom: 2rem;
+
+  h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: #222;
+  }
+}
+
+.actions .cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 600px) {
+  .actions .cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.card {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  gap: 1rem;
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 1rem;
+  text-decoration: none;
+  transition: background 0.2s ease;
+
+  &:hover { background: #e2e8f0; }
+
+  .icon {
+    font-size: 1.5rem;
+    color: #0d9488;
+    flex-shrink: 0;
+  }
+
+  .content {
+    .title { font-weight: 600; color: #1f2937; }
+    .subtitle { font-size: 0.9rem; color: #6b7280; }
+    .cta { font-size: 0.8rem; color: #0d9488; text-decoration: underline; }
+  }
+}
+
+.card:focus-visible {
+  outline: 3px solid #0d9488;
+  outline-offset: 2px;
 }
 </style>
-

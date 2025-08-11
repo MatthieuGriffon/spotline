@@ -83,35 +83,75 @@ const router = createRouter({
       component: () => import('@/views/admin/AdminChatsView.vue'),
       meta: { requiresAuth: true, role: 'admin' },
     },
-    { path: '/auth/confirm/:token?', name: 'AuthConfirm', component: () => import('@/views/authconfirm/AuthConfirmView.vue') }
+    {
+      path: '/auth/confirm/:token?',
+      name: 'AuthConfirm',
+      component: () => import('@/views/authconfirm/AuthConfirmView.vue'),
+    },
+
+    {
+      path: '/confirm-password-change/:token',
+      name: 'confirm-password-change',
+      component: () => import('@/views/ConfirmPasswordChange/ConfirmPasswordChangeView.vue'),
+      meta: { requiresAuth: false }, // on confirme souvent déconnecté
+    },
+    {
+      path: '/profile/password',
+      name: 'profile-password',
+      component: () => import('@/views/ProfilePassword/ProfilePasswordView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
 router.beforeEach(async (to, from, next) => {
-  const authStore = useAuthStore()
+  const auth = useAuthStore()
 
-  if (!authStore.user) {
+  // 1) Hydrate l'user si inconnu
+  if (!auth.user) {
     try {
-      await authStore.fetchMe()
+      await auth.fetchMe()
     } catch {
-      // ignore
+      /* ignore */
     }
   }
 
-  const role = authStore.user?.role?.toLowerCase()
+  const user = auth.user
+  const role = user?.role?.toLowerCase()
   const requiredRole = String(to.meta.role || '').toLowerCase()
+  const requiresAuth = Boolean(to.meta.requiresAuth)
 
-  console.log(
+  console.debug(
     '[DEBUG] Navigation vers',
     to.path,
     '| rôle utilisateur :',
     role,
     '| attendu :',
     requiredRole,
+    '| requiresAuth :',
+    requiresAuth,
   )
 
-  if (to.meta.role && role !== requiredRole) {
-    return next({ name: 'home' })
+  // 2) Auth requise ?
+  if (requiresAuth && !user) {
+    return next({ path: '/login', query: { redirect: to.fullPath } })
+  }
+
+  // 3) Protection des routes admin explicites
+  if (to.path.startsWith('/admin')) {
+    if (!user) return next({ path: '/login', query: { redirect: to.fullPath } })
+    if (role !== 'admin') return next('/dashboard')
+  }
+
+  // 4) Règle "role" optionnelle par meta (facultatif, pour d’autres sections)
+  if (requiredRole && role !== requiredRole) {
+    // Redirige vers le bon tableau de bord selon le rôle connu
+    return next(role === 'admin' ? '/admin' : '/dashboard')
+  }
+
+  // 5) Si déjà connecté et on va sur /login, redirige vers le bon dashboard
+  if (to.path === '/login' && user) {
+    return next(role === 'admin' ? '/admin' : '/dashboard')
   }
 
   return next()

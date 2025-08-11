@@ -1,11 +1,30 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { fetchUserDashboard } from '@/api/dashboard'
 import type { UserDashboardResponseType } from '@/types/dashboard'
+import { BASE_API_URL } from '@/api/config'
 
 const dashboardData = ref<UserDashboardResponseType | null>(null)
 const isLoading = ref(true)
 const error = ref<string | null>(null)
+const fmt = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' })
+const formatDate = (iso: string) => fmt.format(new Date(iso))
+
+const baseOrigin = BASE_API_URL.replace('/api', '') // si pas déjà défini
+
+const avatarSrc = computed(() => {
+  const path = dashboardData.value?.user?.imageUrl ?? null
+  if (!path) return '/images/default-avatar.png'
+
+  const k: string | null =
+    dashboardData.value?.user?.imageUpdatedAt ??
+    dashboardData.value?.user?.updatedAt ??
+    null
+
+  const sep = path.includes('?') ? '&' : '?'
+  return `${baseOrigin}${path}${k ? `${sep}t=${encodeURIComponent(k)}` : ''}`
+})
+
 const actionCards = [
   {
     title: 'Mon compte',
@@ -59,7 +78,10 @@ onMounted(async () => {
 
 <template>
   <div class="dashboard-wrapper">
-    <div v-if="isLoading" class="status">Chargement en cours…</div>
+    <div v-if="isLoading" class="skeleton">
+      <div class="skel skel-title"></div>
+      <div class="skel skel-card" v-for="i in 4" :key="i"></div>
+    </div>
     <div v-else-if="error" class="status error">{{ error }}</div>
 
     <div v-else-if="dashboardData">
@@ -74,8 +96,8 @@ onMounted(async () => {
           <p>Heureux de te revoir sur Spotline.</p>
           <img
             loading="lazy"
-            :src="dashboardData.user.imageUrl"
-            alt="Avatar utilisateur"
+            :src="avatarSrc"
+            :alt="`Avatar de ${dashboardData.user.pseudo}`"
             class="avatar"
           />
         </section>
@@ -87,6 +109,7 @@ onMounted(async () => {
               :key="card.title"
               :to="card.link"
               class="card"
+              :aria-label="`${card.title} — ${card.subtitle}`"
               v-motion
               :initial="{ opacity: 0, y: 20, scale: 0.95 }"
               :enter="{
@@ -96,7 +119,7 @@ onMounted(async () => {
                 transition: { delay: index * 100, duration: 400 },
               }"
             >
-              <font-awesome-icon :icon="card.icon" class="icon" />
+              <font-awesome-icon :icon="card.icon" class="icon" aria-hidden="true" />
               <div class="content">
                 <div class="title">{{ card.title }}</div>
                 <div class="subtitle">{{ card.subtitle }}</div>
@@ -125,7 +148,7 @@ onMounted(async () => {
             >
               <font-awesome-icon icon="question-circle" class="icon" />
               <div class="content">
-                <div class="title">Sessions en attente</div>
+                <div class="title">Invitations en attente</div>
                 <div class="subtitle">Tu as des invitations à répondre</div>
                 <div class="cta">Répondre maintenant</div>
               </div>
@@ -147,7 +170,8 @@ onMounted(async () => {
           <h3>Mes dernières prises</h3>
           <ul>
             <li v-for="prise in dashboardData.recentPrises" :key="prise.id">
-              {{ prise.espece }} – {{ new Date(prise.date).toLocaleDateString() }}
+              {{ prise.espece }} –
+              <time :datetime="prise.date">{{ formatDate(prise.date) }}</time>
               <span v-if="prise.groupName"> ({{ prise.groupName }})</span>
             </li>
           </ul>
@@ -157,9 +181,9 @@ onMounted(async () => {
           <h3>Mes sessions récentes</h3>
           <ul>
             <li v-for="session in dashboardData.recentSessions" :key="session.id">
-              {{ session.title }} – {{ new Date(session.date).toLocaleDateString() }} ({{
-                session.role
-              }})
+              {{ session.title }} –
+              <time :datetime="session.date">{{ formatDate(session.date) }}</time>
+              ({{ session.role }})
             </li>
           </ul>
         </section>
@@ -214,16 +238,21 @@ onMounted(async () => {
   }
 }
 .user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
   margin-bottom: 2rem;
+  padding-top: 1rem;
 
   .avatar {
-    margin-top: 1rem;
-    width: 80px;
-    height: 80px;
+    margin-top: 0.5rem;
+    width: 96px;
+    height: 96px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid #ccc;
+    border: 3px solid #ccc;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   }
 }
 .section-block {
@@ -253,16 +282,23 @@ onMounted(async () => {
   margin: 0.5rem 0;
 }
 .actions .cards {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 1rem;
 }
+@media (min-width: 600px) {
+  .actions .cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .card {
   display: flex;
+  min-height: 64px;
   align-items: center;
   gap: 1rem;
   background: #f1f5f9;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 1rem;
   text-decoration: none;
   transition: background 0.2s ease;
@@ -295,6 +331,10 @@ onMounted(async () => {
     }
   }
 }
+.card:focus-visible {
+  outline: 3px solid #0d9488;
+  outline-offset: 2px;
+}
 .card-inner {
   display: flex;
   align-items: center;
@@ -323,6 +363,31 @@ onMounted(async () => {
       font-weight: 600;
       color: #0d9488;
     }
+  }
+}
+.skeleton {
+  .skel {
+    background: linear-gradient(90deg, #f2f4f7 25%, #e9edf3 37%, #f2f4f7 63%);
+    background-size: 400% 100%;
+    border-radius: 8px;
+    animation: shimmer 1.4s ease infinite;
+  }
+  .skel-title {
+    height: 24px;
+    width: 40%;
+    margin: 1rem 0;
+  }
+  .skel-card {
+    height: 64px;
+    margin: 0.5rem 0;
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
   }
 }
 </style>

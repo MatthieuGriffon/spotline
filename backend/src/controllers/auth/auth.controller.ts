@@ -14,7 +14,7 @@ import {
 import { ChangePasswordBody } from "@/schemas/auth/changePassword.schema";
 import { confirmEmailToken } from "@/services/emailConfirmationService";
 import { createAccountSession } from "@/services/user/user.services";
-
+type ConfirmBody = { token: string }
 // Helper pour transformer un user DB → SessionUser
 function toSessionUser(user: any): SessionUser {
   return {
@@ -154,15 +154,25 @@ export async function changePasswordHandler(
 }
 
 export async function confirmPasswordChangeHandler(
-  request: FastifyRequest<{ Body: { token: string } }>,
+  req: FastifyRequest<{ Body: { token: string } }>,
   reply: FastifyReply
 ) {
-  const { token } = request.body;
-  const user = await confirmPasswordChange(request.server, token);
+  const { token } = req.body;
+  const result = await confirmPasswordChange(req.server, token);
 
-  request.session.user = toSessionUser(user);
+  try {
+    await req.session.destroy();
+  } catch {}
 
-  reply.send({ message: "Mot de passe modifié avec succès 🎉" });
+  const COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "sid";
+  reply.clearCookie(COOKIE_NAME, {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+
+  return reply.send(result);
 }
 
 export async function requestEmailChangeHandler(
@@ -192,6 +202,21 @@ export async function resetPasswordHandler(
   reply: FastifyReply
 ) {
   const { token, newPassword } = request.body;
-  await resetPassword(request.server, token, newPassword);
-  reply.send({ message: "Mot de passe réinitialisé avec succès 🎉" });
+  const result = await resetPassword(request.server, token, newPassword);
+
+  // détruire la session côté serveur (si présente)
+  try {
+    await request.session.destroy();
+  } catch {}
+
+  // effacer le cookie côté client
+  const COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? "sid";
+  reply.clearCookie(COOKIE_NAME, {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+
+  return reply.send(result);
 }

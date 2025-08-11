@@ -6,8 +6,8 @@ import '@splidejs/vue-splide/css/sea-green'
 import { MotionPlugin } from '@vueuse/motion'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { faUser,faUserCircle, faCalendarAlt, faFish, faMap, faUsers, faSun, faSignInAlt,faExclamationTriangle, faChartBar,faComments,faPen, faTrash,} from '@fortawesome/free-solid-svg-icons'
-library.add(faUser, faUserCircle, faCalendarAlt, faFish, faMap, faUsers, faSun, faSignInAlt,faExclamationTriangle, faChartBar, faComments,faPen, faTrash)
+import { faUser,faUserCircle, faCalendarAlt, faFish, faMap, faUsers, faSun, faSignInAlt,faExclamationTriangle, faChartBar,faComments,faPen, faTrash,faKey} from '@fortawesome/free-solid-svg-icons'
+library.add(faUser, faUserCircle, faCalendarAlt, faFish, faMap, faUsers, faSun, faSignInAlt,faExclamationTriangle, faChartBar, faComments,faPen, faTrash, faKey)
 
 
 import App from './App.vue'

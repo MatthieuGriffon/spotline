@@ -25,4 +25,12 @@ declare module "fastify" {
       }) => Promise<void>;
     };
   }
+  interface FastifyRequest {
+    groupMember?: {
+      userId: string;
+      groupId: string;
+      role: "admin" | "member" | "guest";
+      joinedAt?: Date;
+    };
+  }
 }

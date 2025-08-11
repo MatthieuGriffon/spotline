@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { loginUser, registerUser, getMe, logoutUser } from '@/api/auth'
+import { loginUser, registerUser, logoutUser } from '@/api/auth'
 import { getUserMe } from '@/api/user'
 
 export interface User {
@@ -10,6 +10,8 @@ export interface User {
   role: 'USER' | 'ADMIN'
   imageUrl: string | null
   isConfirmed: boolean
+  imageUpdatedAt?: string
+  updatedAt?: string
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -27,10 +29,9 @@ export const useAuthStore = defineStore('auth', () => {
       const data = await loginUser(email, password)
       await fetchMe()
       console.debug('[DEBUG] user après login:', user.value)
-
       successMessage.value = data.message || 'Connexion réussie'
-    } catch (err: any) {
-      errorMessage.value = err.message ?? 'Erreur lors de la connexion'
+    } catch (err: unknown) {
+      errorMessage.value = err instanceof Error ? err.message : 'Erreur lors de la connexion'
     } finally {
       isLoading.value = false
     }
@@ -44,8 +45,8 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const data = await registerUser(email, pseudo, password)
       successMessage.value = data.message || 'Compte créé ! Vérifie ta boîte mail.'
-    } catch (err: any) {
-      errorMessage.value = err.message ?? 'Erreur lors de l’inscription'
+    } catch (err: unknown) {
+      errorMessage.value = err instanceof Error ? err.message : 'Erreur lors de l’inscription'
     } finally {
       isLoading.value = false
     }
@@ -56,16 +57,16 @@ export const useAuthStore = defineStore('auth', () => {
       const data = await getUserMe()
       console.debug('[DEBUG] Résultat fetchMe:', data)
 
-      // Sécuriser les champs imageUrl et isConfirmed
+      // On garde le rôle tel qu'il vient du backend
       user.value = {
         id: data.id,
         email: data.email,
         pseudo: data.pseudo,
-        role: data.role === 'admin' ? 'ADMIN' : 'USER',
+        role: data.role as 'USER' | 'ADMIN',
         imageUrl: data.imageUrl ?? null,
         isConfirmed: data.isConfirmed ?? false,
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.warn('[WARN] fetchMe error:', err)
       user.value = null
     }
@@ -76,8 +77,8 @@ export const useAuthStore = defineStore('auth', () => {
       await logoutUser()
       user.value = null
       successMessage.value = 'Déconnexion réussie'
-    } catch (err: any) {
-      errorMessage.value = err.message ?? 'Erreur à la déconnexion'
+    } catch (err: unknown) {
+      errorMessage.value = err instanceof Error ? err.message : 'Erreur à la déconnexion'
     }
   }
 

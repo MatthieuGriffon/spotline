@@ -21,6 +21,7 @@ model User {
   createdAt         DateTime   @default(now())
 
   groups               GroupMember[]
+  createdGroups        Group[]                  @relation("UserCreatedGroups")
   prises               Prise[]
   sessions             Session[]                @relation("OrganisateurSessions")
   invites              SessionInvite[]
@@ -32,7 +33,6 @@ model User {
   spots                Spot[]
   reports              Report[]
   moderationLogs       ModerationLog[]
-
 }
 
 model AccountSession {
@@ -51,14 +51,18 @@ enum UserRole {
 }
 
 model Group {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
   name        String
   description String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime      @default(now())
+  creator     User          @relation("UserCreatedGroups", fields: [creatorId], references: [id], onDelete: Restrict)
+  creatorId   String
+  members     GroupMember[]
+  prises      PriseGroup[]
+  sessions    Session[]
 
-  members  GroupMember[]
-  prises   Prise[]
-  sessions Session[]
+  @@index([createdAt])
+  @@index([creatorId])
 }
 
 model GroupMember {
@@ -71,6 +75,8 @@ model GroupMember {
   joinedAt DateTime  @default(now())
 
   @@unique([userId, groupId])
+  @@index([groupId, role])
+  @@index([groupId])
 }
 
 enum GroupRole {
@@ -79,12 +85,21 @@ enum GroupRole {
   guest
 }
 
+model PriseGroup {
+  prise     Prise    @relation(fields: [priseId], references: [id], onDelete: Cascade)
+  priseId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId   String
+  createdAt DateTime @default(now())
+
+  @@id([priseId, groupId])
+  @@index([groupId])
+}
+
 model Prise {
-  id      String  @id @default(cuid())
-  user    User    @relation(fields: [userId], references: [id])
-  userId  String
-  group   Group?  @relation(fields: [groupId], references: [id])
-  groupId String?
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
 
   photoUrl    String
   espece      String
@@ -96,22 +111,29 @@ model Prise {
   longitude  Float
   visibility Visibility
 
-  createdAt DateTime @default(now())
-  reports   Report[]
+  createdAt      DateTime        @default(now())
+  groupes        PriseGroup[]
+  reports        Report[]
   moderationLogs ModerationLog[]
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model Spot {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  name      String
-  latitude  Float
-  longitude Float
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  name        String
+  latitude    Float
+  longitude   Float
   description String?
-  isHidden  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  reports   Report[]
+  isHidden    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  reports     Report[]
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model Session {
@@ -122,14 +144,16 @@ model Session {
   latitude    Float
   longitude   Float
 
-  group       Group  @relation(fields: [groupId], references: [id])
+  group       Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
   groupId     String
-  organizer   User   @relation("OrganisateurSessions", fields: [organizerId], references: [id])
+  organizer   User   @relation("OrganisateurSessions", fields: [organizerId], references: [id], onDelete: Restrict)
   organizerId String
 
   invites SessionInvite[]
 
   createdAt DateTime @default(now())
+
+  @@index([groupId, date])
 }
 
 model SessionInvite {
@@ -142,6 +166,7 @@ model SessionInvite {
   respondedAt DateTime?
 
   @@unique([sessionId, userId])
+  @@index([userId])
 }
 
 enum Response {
@@ -185,33 +210,38 @@ model PasswordResetToken {
 }
 
 model UserPreferences {
-  id             String   @id @default(uuid())
-  user           User     @relation(fields: [userId], references: [id])
-  userId         String   @unique
+  id     String @id @default(uuid())
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique
 
-  darkMode       Boolean  @default(false)
-  mapTile        String   @default("default") // ex: "default", "satellite", "night"
-  notifications  Boolean  @default(true)
+  darkMode      Boolean @default(false)
+  mapTile       String  @default("default") // ex: "default", "satellite", "night"
+  notifications Boolean @default(true)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Report {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   type      ReportType
   message   String?
-  resolved  Boolean  @default(false)
-  createdAt DateTime @default(now())
+  resolved  Boolean    @default(false)
+  createdAt DateTime   @default(now())
 
-  prise     Prise?   @relation(fields: [priseId], references: [id])
-  priseId   String?
+  prise   Prise?  @relation(fields: [priseId], references: [id])
+  priseId String?
 
-  spot      Spot?    @relation(fields: [spotId], references: [id])
-  spotId    String?
+  spot   Spot?   @relation(fields: [spotId], references: [id])
+  spotId String?
 
-  user      User?    @relation(fields: [userId], references: [id])
-  userId    String?
+  user   User?   @relation(fields: [userId], references: [id])
+  userId String?
+
+  @@index([priseId])
+  @@index([spotId])
+  @@index([userId])
+  @@index([priseId, resolved])
 }
 
 enum ReportType {
@@ -221,15 +251,17 @@ enum ReportType {
 }
 
 model ModerationLog {
-  id        String           @id @default(cuid())
-  action    ModerationAction
-  priseId   String
-  prise     Prise?           @relation(fields: [priseId], references: [id])
+  id          String           @id @default(cuid())
+  action      ModerationAction
+  priseId     String
+  prise       Prise            @relation(fields: [priseId], references: [id], onDelete: Cascade)
   priseEspece String?
-  userPseudo String?
-  adminId   String
-  admin     User             @relation(fields: [adminId], references: [id])
-  createdAt DateTime         @default(now())
+  userPseudo  String?
+  adminId     String
+  admin       User             @relation(fields: [adminId], references: [id], onDelete: Restrict)
+  createdAt   DateTime         @default(now())
+
+  @@index([createdAt])
 }
 
 enum ModerationAction {

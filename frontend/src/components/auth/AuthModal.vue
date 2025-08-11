@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/useAuthStore'
 import EmailSentModal from '@/components/auth/EmailSentModal.vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 
 const emit = defineEmits<{
@@ -19,28 +19,33 @@ const authStore = useAuthStore()
 const showEmailSentModal = ref(false)
 
 const router = useRouter()
+const route = useRoute()
 
 const handleSubmit = async () => {
   if (isRegistering.value) {
     await authStore.register(email.value, pseudo.value, password.value)
-
     if (authStore.successMessage?.includes('Vérifie ta boîte mail')) {
       emit('close')
       emit('email-sent')
     }
   } else {
     await authStore.login(email.value, password.value)
-if (authStore.user) {
-    console.log('[DEBUG] Redirection, rôle =', authStore.user.role)
-  emit('close')
 
-  const role = authStore.user.role.toLowerCase()
-  if (role === 'admin') {
-    router.push('/admin')
-  } else if (role === 'user') {
-    router.push('/dashboard')
-  }
-}
+    if (authStore.user) {
+      console.log('[DEBUG] Redirection, rôle =', authStore.user.role)
+      emit('close')
+
+      const role = authStore.user.role.toLowerCase()
+      const fallback = role === 'admin' ? '/admin' : '/dashboard'
+
+      // 1) on respecte ?redirect=... si présent
+      const q = (route.query.redirect as string | undefined) ?? ''
+      // 2) on ne fait confiance qu’aux chemins internes
+      const target = q && q.startsWith('/') ? q : fallback
+
+      // 3) on remplace l’historique (évite de revenir sur la modale)
+      router.replace(target)
+    }
   }
 }
 </script>
