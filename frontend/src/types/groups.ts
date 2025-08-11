@@ -1,6 +1,6 @@
 export type GroupRole = 'admin' | 'member' | 'guest'
 
-// Version “liste” (utilisée dans /groupes)
+// ──────────────── Version “liste” ────────────────
 export interface Group {
   id: string
   name: string
@@ -10,20 +10,55 @@ export interface Group {
   role: GroupRole
 }
 
-// Membre dans un groupe
-export interface GroupMember {
+// ──────────────── Membre du groupe ────────────────
+export interface GroupMemberDetail {
   userId: string
   pseudo: string
   role: GroupRole
+  joinedAt: string
 }
 
-// Version “détail” (utilisée dans /groupes/:id)
-export interface GroupDetails extends Group {
+// ──────────────── SessionSummary ────────────────
+export interface SessionSummary {
+  id: string
+  title: string
+  description?: string | null
+  date: string
+  latitude: number
+  longitude: number
+  groupId: string
+  organizerId: string
+  createdAt: string
+}
+
+// ──────────────── PriseSummary ────────────────
+export interface PriseSummary {
+  id: string
+  userId: string
+  groupId: string
+  photoUrl: string
+  espece: string
+  materiel?: string | null
+  date: string
+  latitude: number
+  longitude: number
+  visibility: 'public' | 'private' | 'group'
+  createdAt: string
+}
+
+// ──────────────── Version “détail” ────────────────
+export interface GroupDetails {
+  id: string
+  name: string
+  description?: string
+  createdAt: string
   creatorId: string
-  members: GroupMember[]
+  members: GroupMemberDetail[]
+  sessions: SessionSummary[]
+  prises: PriseSummary[]
 }
 
-// Payloads API
+// ──────────────── Payloads API ────────────────
 export interface CreateGroupPayload {
   name: string
   description?: string

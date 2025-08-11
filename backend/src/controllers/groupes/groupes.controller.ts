@@ -104,7 +104,7 @@ export const GroupController = {
       throw req.server.httpErrors.unauthorized("Non authentifié");
     }
     await removeMember(req.server, user.id, req.params.id, req.params.userId);
-    rep.code(204).send();
+    rep.send({ success: true, message: "Groupe supprimé" });
   },
 
   // 🚪 Quitter un groupe
@@ -117,7 +117,7 @@ export const GroupController = {
       throw req.server.httpErrors.unauthorized("Non authentifié");
     }
     await leaveGroup(req.server, user.id, req.params.id);
-    rep.code(204).send();
+    rep.send({ success: true, message: "Vous avez quitté le groupe" });
   },
 
   // 🗑 Supprimer un groupe
@@ -130,6 +130,6 @@ export const GroupController = {
       throw req.server.httpErrors.unauthorized("Non authentifié");
     }
     await deleteGroup(req.server, user.id, req.params.id);
-    rep.code(204).send();
+    rep.send({ success: true, message: "Groupe supprimé" });
   },
 };

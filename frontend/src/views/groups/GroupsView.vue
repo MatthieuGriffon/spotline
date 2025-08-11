@@ -46,29 +46,28 @@ function goToDetails(id: string) {
             <h2>{{ group.name }}</h2>
             <p v-if="group.description" class="description">{{ group.description }}</p>
             <small>
-              {{ group.memberCount }} membre{{ group.memberCount > 1 ? 's' : '' }} • 
-              Rôle : {{ group.role }}
+              {{ group.memberCount }} membre{{ group.memberCount > 1 ? 's' : '' }} • Rôle :
+              {{ group.role }}
             </small>
           </div>
-          <button @click.stop="confirmDelete(group.id)" class="delete-btn" aria-label="Supprimer le groupe">
+          <button
+            @click.stop="confirmDelete(group.id)"
+            class="delete-btn"
+            :disabled="store.isLoading"
+            aria-label="Supprimer le groupe"
+          >
             ❌
           </button>
         </li>
       </ul>
 
-      <div v-else class="empty-state">
-        Aucun groupe pour le moment.
-      </div>
+      <div v-else class="empty-state">Aucun groupe pour le moment.</div>
 
       <div class="create-form">
         <h2>Créer un groupe</h2>
         <input v-model="newName" placeholder="Nom du groupe" />
         <textarea v-model="newDescription" placeholder="Description (optionnelle)"></textarea>
-        <button 
-          @click="handleCreate" 
-          :disabled="!newName.trim() || store.isLoading">
-          Créer
-        </button>
+        <button @click="handleCreate" :disabled="!newName.trim() || store.isLoading">Créer</button>
       </div>
     </template>
   </div>

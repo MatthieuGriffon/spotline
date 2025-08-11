@@ -46,37 +46,36 @@ export const useGroupsStore = defineStore('groups', () => {
   }
 
   // ➕ Créer un groupe
-  async function addGroup(name: string, description?: string) {
-    setLoading(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      const newGroup = await createGroup(name, description)
-      groups.value.push(newGroup)
-      setSuccess('Groupe créé avec succès')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la création du groupe')
-    } finally {
-      setLoading(false)
-    }
-  }
+ async function addGroup(name: string, description?: string) {
+   setLoading(true)
+   setError(null)
+   setSuccess(null)
+   try {
+     await createGroup(name, description)
+     await loadGroups() // ← re-fetch côté store
+     setSuccess('Groupe créé avec succès')
+   } catch (err) {
+     setError(err instanceof Error ? err.message : 'Erreur lors de la création du groupe')
+   } finally {
+     setLoading(false)
+   }
+ }
 
   // 🗑 Supprimer un groupe
-  async function removeGroup(groupId: string) {
-    setLoading(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      await deleteGroup(groupId)
-      groups.value = groups.value.filter((g) => g.id !== groupId)
-      setSuccess('Groupe supprimé avec succès')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression du groupe')
-    } finally {
-      setLoading(false)
-    }
-  }
-
+ async function removeGroup(groupId: string) {
+   setLoading(true)
+   setError(null)
+   setSuccess(null)
+   try {
+     await deleteGroup(groupId)
+     await loadGroups() // ← re-fetch côté store
+     setSuccess('Groupe supprimé avec succès')
+   } catch (err) {
+     setError(err instanceof Error ? err.message : 'Erreur lors de la suppression du groupe')
+   } finally {
+     setLoading(false)
+   }
+ }
   // 📄 Charger les détails d'un groupe
   async function loadGroupDetails(groupId: string) {
     setLoading(true)
