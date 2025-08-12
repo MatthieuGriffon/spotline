@@ -94,9 +94,9 @@ export const useGroupsStore = defineStore('groups', () => {
     setLoading(true)
     setError(null)
     try {
-      const updated = await updateGroup(groupId, name, description)
-      groups.value = groups.value.map((g) => (g.id === groupId ? updated : g))
-      if (currentGroup.value?.id === groupId) currentGroup.value = updated as GroupDetails
+      const updatedDetail = await updateGroup(groupId, name, description)
+      currentGroup.value = updatedDetail
+      await loadGroups() // <- évite tout mismatch de shape
       setSuccess('Groupe mis à jour avec succès')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour du groupe')

@@ -185,10 +185,56 @@ export async function updateGroup(
   data: { name?: string; description?: string }
 ) {
   await assertAdmin(fastify, groupId, userId);
-  return fastify.prisma.group.update({
+
+  // On met à jour
+  await fastify.prisma.group.update({
     where: { id: groupId },
     data: { ...data },
   });
+
+  // Puis on renvoie le *détail* complet attendu par le schéma
+  const group = await fastify.prisma.group.findUniqueOrThrow({
+    where: { id: groupId },
+    include: groupWithAllInclude, // le même include que dans getGroup
+  });
+
+  return {
+    id: group.id,
+    name: group.name,
+    description: group.description,
+    createdAt: group.createdAt.toISOString(),
+    creatorId: group.creatorId,
+    members: group.members.map((m) => ({
+      userId: m.userId,
+      pseudo: m.user.pseudo,
+      role: m.role,
+      joinedAt: m.joinedAt.toISOString(),
+    })),
+    sessions: group.sessions.map((s) => ({
+      id: s.id,
+      title: s.title,
+      description: s.description ?? null,
+      date: s.date.toISOString(),
+      latitude: s.latitude,
+      longitude: s.longitude,
+      groupId: s.groupId,
+      organizerId: s.organizerId,
+      createdAt: s.createdAt.toISOString(),
+    })),
+    prises: group.prises.map((pg) => ({
+      id: pg.prise.id,
+      userId: pg.prise.userId,
+      groupId: pg.groupId,
+      photoUrl: pg.prise.photoUrl,
+      espece: pg.prise.espece,
+      materiel: pg.prise.materiel ?? null,
+      date: pg.prise.date.toISOString(),
+      latitude: pg.prise.latitude,
+      longitude: pg.prise.longitude,
+      visibility: pg.prise.visibility,
+      createdAt: pg.prise.createdAt.toISOString(),
+    })),
+  };
 }
 
 export async function inviteUser(

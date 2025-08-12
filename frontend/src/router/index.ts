@@ -101,6 +101,23 @@ const router = createRouter({
       component: () => import('@/views/ProfilePassword/ProfilePasswordView.vue'),
       meta: { requiresAuth: true },
     },
+    { path: '/groupes', name: 'groups-list', component: () => import('@/views/groups/GroupsView.vue') },
+    {
+      path: '/groupes/nouveau',
+      name: 'group-new',
+      component: () => import('@/views/groups/GroupsView.vue'),
+    }, // si tu l’as
+    {
+      path: '/groupes/:id',
+      name: 'group-detail',
+      component: () => import('@/views/groups/GroupDetailView.vue'),
+    },
+
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('@/views/NotFound/NotFound.vue'),
+    },
   ],
 })
 
