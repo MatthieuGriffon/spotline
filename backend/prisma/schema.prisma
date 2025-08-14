@@ -20,19 +20,21 @@ model User {
   role              UserRole   @default(USER) // 👈 ici
   createdAt         DateTime   @default(now())
 
-  groups               GroupMember[]
-  createdGroups        Group[]                  @relation("UserCreatedGroups")
-  prises               Prise[]
-  sessions             Session[]                @relation("OrganisateurSessions")
-  invites              SessionInvite[]
-  tokens               EmailConfirmationToken[]
-  passwordChangeTokens PasswordChangeToken[]
-  passwordResetTokens  PasswordResetToken[]
-  accountSessions      AccountSession[]
-  preferences          UserPreferences?
-  spots                Spot[]
-  reports              Report[]
-  moderationLogs       ModerationLog[]
+  groups                   GroupMember[]
+  createdGroups            Group[]                  @relation("UserCreatedGroups")
+  prises                   Prise[]
+  sessions                 Session[]                @relation("OrganisateurSessions")
+  invites                  SessionInvite[]
+  tokens                   EmailConfirmationToken[]
+  passwordChangeTokens     PasswordChangeToken[]
+  passwordResetTokens      PasswordResetToken[]
+  accountSessions          AccountSession[]
+  preferences              UserPreferences?
+  spots                    Spot[]
+  reports                  Report[]
+  moderationLogs           ModerationLog[]
+  sentGroupInvitations     GroupInvitation[]        @relation("UserSentGroupInvitations")
+  receivedGroupInvitations GroupInvitation[]        @relation("UserReceivedGroupInvitations")
 }
 
 model AccountSession {
@@ -51,15 +53,16 @@ enum UserRole {
 }
 
 model Group {
-  id          String        @id @default(cuid())
+  id          String            @id @default(cuid())
   name        String
   description String?
-  createdAt   DateTime      @default(now())
-  creator     User          @relation("UserCreatedGroups", fields: [creatorId], references: [id], onDelete: Restrict)
+  createdAt   DateTime          @default(now())
+  creator     User              @relation("UserCreatedGroups", fields: [creatorId], references: [id], onDelete: Restrict)
   creatorId   String
   members     GroupMember[]
   prises      PriseGroup[]
   sessions    Session[]
+  invitations GroupInvitation[]
 
   @@index([createdAt])
   @@index([creatorId])
@@ -71,7 +74,7 @@ model GroupMember {
   userId   String
   group    Group     @relation(fields: [groupId], references: [id])
   groupId  String
-  role     GroupRole
+  role     GroupRole @default(member) // 👈 défaut ajouté
   joinedAt DateTime  @default(now())
 
   @@unique([userId, groupId])
@@ -83,6 +86,37 @@ enum GroupRole {
   admin
   member
   guest
+}
+
+model GroupInvitation {
+  id            String           @id @default(cuid())
+  groupId       String
+  inviterId     String
+  inviteeUserId String? // invitation directe (cible existante)
+  token         String?          @unique @db.VarChar(255) // lien/QR (NULL autorisé, unique sur valeurs non-null)
+  expiresAt     DateTime?
+  maxUses       Int?
+  usedCount     Int              @default(0)
+  status        InvitationStatus @default(PENDING)
+  inviteeEmail  String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  inviter User  @relation("UserSentGroupInvitations", fields: [inviterId], references: [id], onDelete: Restrict)
+  invitee User? @relation("UserReceivedGroupInvitations", fields: [inviteeUserId], references: [id], onDelete: SetNull)
+
+  @@index([groupId, status])
+  @@index([inviteeUserId, status])
+  @@index([inviterId])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  REVOKED
 }
 
 model PriseGroup {

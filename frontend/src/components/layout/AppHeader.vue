@@ -8,6 +8,7 @@ const iconCode = ref<string | null>(null)
 const description = ref<string | null>(null)
 const weatherEmoji = ref<string>('')
 defineEmits(['auth-requested'])
+import { defineAsyncComponent } from 'vue'
 
 const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY
 const authStore = useAuthStore()
@@ -52,6 +53,9 @@ const fetchWeather = async (lat: number, lon: number) => {
     console.error('Erreur météo', err)
   }
 }
+const BannerInvitations = defineAsyncComponent(
+  () => import('../ui/BannerInvitations.vue') // ← path is relative to AppHeader.vue
+)
 
 onMounted(() => {
   if ('geolocation' in navigator) {
@@ -69,6 +73,8 @@ onMounted(() => {
     <div class="header-logo">
       <img src="@/assets/logos/spotline_logo_34x64.png" alt="Logo Spotline" class="logo" />
     </div>
+        <BannerInvitations />
+
     
     <div class="header-center">
       <div class="title">Spotline</div>

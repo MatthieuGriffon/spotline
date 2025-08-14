@@ -1,134 +1,123 @@
-import Fastify from 'fastify'
-import * as dotenv from 'dotenv'
-import cors from '@fastify/cors'
-import prismaPlugin from '@/plugins/prisma'
-import emailPlugin from '@/plugins/email'
-import sensible from '@fastify/sensible'
-import authRoutes from '@/routes/auth/auth'
-import userRoutes from '@/routes/user/user.routes'
-import avatarRoutes from '@/routes/upload/avatar.routes'
-import groupesRoutes from '@/routes/groupes/groupes.routes'
+import Fastify from "fastify";
+import { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
+import * as dotenv from "dotenv";
+import cors from "@fastify/cors";
+import fastifyCookie from "@fastify/cookie";
+import fastifySession from "@fastify/session";
+import multipart from "@fastify/multipart";
+import fastifyStatic from "@fastify/static";
+import path, { dirname } from "path";
+import { fileURLToPath } from "url";
 
-import { adminUserRoutes } from '@/routes/admin/userRoutes.routes'
-import { initAdmin } from '@/scripts/init-admin'
-import { accountSessionRoutes } from '@/routes/user/accountSession.route'
-import { updateLastSeenPlugin } from '@/plugins/updateLastSeen'
-import { adminStatsRoutes } from '@/routes/admin/statsRoutes.routes'
-import { reportedPrisesRoutes } from '@/routes/admin/reportedPrise.routes'
-import { moderationLogRoutes } from './routes/admin/moderationLog.routes'
-import { dashboardRoutes } from './routes/dashboard/dashboard.routes'
+import swagger from "@fastify/swagger";
+import swaggerUI from "@fastify/swagger-ui";
 
+import prismaPlugin from "@/plugins/prisma";
+import emailPlugin from "@/plugins/email";
+import sensible from "@fastify/sensible";
+import { updateLastSeenPlugin } from "@/plugins/updateLastSeen";
 
-import fastifyStatic from '@fastify/static'
-import path from 'path'
+import authRoutes from "@/routes/auth/auth";
+import userRoutes from "@/routes/user/user.routes";
+import avatarRoutes from "@/routes/upload/avatar.routes";
+import groupesRoutes from "@/routes/groupes/groupes.routes";
+import groupInvitationsRoutes from "@/routes/groupes/invitations.route";
+import invitePublicRoutes from "@/routes/invite/invite.route";
+import { accountSessionRoutes } from "@/routes/user/accountSession.route";
+import { adminUserRoutes } from "@/routes/admin/userRoutes.routes";
+import { adminStatsRoutes } from "@/routes/admin/statsRoutes.routes";
+import { reportedPrisesRoutes } from "@/routes/admin/reportedPrise.routes";
+import { moderationLogRoutes } from "./routes/admin/moderationLog.routes";
+import { dashboardRoutes } from "./routes/dashboard/dashboard.routes";
 
-import swagger from '@fastify/swagger'
-import swaggerUI from '@fastify/swagger-ui'
+import { initAdmin } from "@/scripts/init-admin";
 
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
+dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-dotenv.config()
-const app = Fastify({
-  logger: true
-})
-// Enable CORS for all origins
+const app = Fastify({ logger: true }).withTypeProvider<TypeBoxTypeProvider>();
+
+// --- Core plugins
 await app.register(cors, {
-  origin: 'http://localhost:5173',
+  origin: "http://localhost:5173",
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
-})
-import fastifyCookie from '@fastify/cookie'
-import fastifySession from '@fastify/session'
-import multipart from '@fastify/multipart'
-// TODO 🚨 En production, NE PAS servir /uploads/ en statique directement.
-// Remplacer fastifyStatic par une route protégée GET /uploads/avatar/:filename
-// pour éviter tout accès non autorisé aux fichiers utilisateurs (avatars, prises, etc.)
-// TODO 🚨 En production, mettre secure: true dans les cookies de session
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+});
 
-// Register plugins
-app.register(fastifyStatic, {
-  root: path.join(__dirname, '../../uploads'),
-  prefix: '/uploads/',
-})
-app.register(fastifyCookie)
+await app.register(fastifyCookie);
 
-app.register(fastifySession, {
-  secret: process.env.SESSION_SECRET || 'default_dev_secret_should_change', // 🔒 change en prod
+await app.register(fastifySession, {
+  secret: process.env.SESSION_SECRET || "default_dev_secret_should_change", // 🔒 change en prod
   cookie: {
     secure: false, // ⚠️ true en prod avec HTTPS
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: "lax",
   },
   saveUninitialized: false,
-})
+});
 
+// ⚠️ Dev only: static uploads
+await app.register(fastifyStatic, {
+  root: path.join(__dirname, "../../uploads"),
+  prefix: "/uploads/",
+});
 
-app.register(updateLastSeenPlugin)
-app.register(prismaPlugin)
-app.register(emailPlugin)
-app.register(sensible)
-app.register(multipart)
+// --- App plugins
+await app.register(sensible);
+await app.register(multipart);
+await app.register(prismaPlugin);
+await app.register(emailPlugin);
+await app.register(updateLastSeenPlugin);
 
-// Initialize admin user
-app.ready().then(async () => {
-  await initAdmin(app.prisma)
-})
-
-app.register(swagger, {
+// --- Swagger
+await app.register(swagger, {
   openapi: {
     info: {
-      title: 'Spotline API',
-      version: '1.0.0',
-      description: 'Documentation auto-générée de l’API Spotline'
+      title: "Spotline API",
+      version: "1.0.0",
+      description: "Documentation auto-générée de l’API Spotline",
     },
-    servers: [
-      { url: 'http://localhost:3000', description: 'Dev local' }
-    ],
+    servers: [{ url: "http://localhost:3000", description: "Dev local" }],
     components: {
       securitySchemes: {
-        sessionCookie: {
-          type: 'apiKey',
-          in: 'cookie',
-          name: 'session'
-        }
-      }
+        sessionCookie: { type: "apiKey", in: "cookie", name: "session" },
+      },
     },
-    security: [
-      { sessionCookie: [] }
-    ]
-  }
-})
+    security: [{ sessionCookie: [] }],
+  },
+});
 
-app.register(swaggerUI, {
-  routePrefix: '/docs', // Accès via http://localhost:3000/docs
-  uiConfig: {
-    docExpansion: 'full',
-    deepLinking: true
-  }
-})
+await app.register(swaggerUI, {
+  routePrefix: "/docs",
+  uiConfig: { docExpansion: "full", deepLinking: true },
+});
 
-// Register routes
-app.register(authRoutes, { prefix: '/api/auth' })
-app.register(userRoutes, { prefix: '/api' })
-app.register(accountSessionRoutes, { prefix: '/api' })
-app.register(adminUserRoutes, { prefix: '/api' })
-app.register(avatarRoutes)
-app.register(adminStatsRoutes, { prefix: '/api/admin' })
-app.register(reportedPrisesRoutes, { prefix: '/api' })
-app.register(moderationLogRoutes, { prefix: '/api/admin'})
-app.register(dashboardRoutes, { prefix: '/api' })
-app.register(groupesRoutes, { prefix: '/api/groupes' })
+// --- Routes
+await app.register(authRoutes, { prefix: "/api/auth" });
+await app.register(userRoutes, { prefix: "/api" });
+await app.register(accountSessionRoutes, { prefix: "/api" });
+await app.register(adminUserRoutes, { prefix: "/api" });
+await app.register(avatarRoutes);
+await app.register(adminStatsRoutes, { prefix: "/api/admin" });
+await app.register(reportedPrisesRoutes, { prefix: "/api" });
+await app.register(moderationLogRoutes, { prefix: "/api/admin" });
+await app.register(dashboardRoutes, { prefix: "/api" });
 
+await app.register(groupesRoutes, { prefix: "/api/groupes" });
+await app.register(groupInvitationsRoutes, { prefix: "/api/groupes" });
+await app.register(invitePublicRoutes, { prefix: "/api" }); 
+// --- Init data
+app.ready().then(async () => {
+  await initAdmin(app.prisma);
+});
 
-// listen on port 3000
+// --- Listen
 app.listen({ port: 3000 }, (err, address) => {
   if (err) {
-    app.log.error(err)
-    process.exit(1)
+    app.log.error(err);
+    process.exit(1);
   }
-  app.log.info(`🚀 Spotline server listening at ${address}`)
-})
+  app.log.info(`🚀 Spotline server listening at ${address}`);
+});

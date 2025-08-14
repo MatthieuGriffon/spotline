@@ -3,6 +3,6 @@ declare module '@splidejs/vue-splide' {
   export const Splide: Component
   export const SplideSlide: Component
   export const SplideTrack: Component
-  const VueSplide: any
+  const VueSplide: Component
   export default VueSplide
 }

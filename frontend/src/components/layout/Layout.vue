@@ -1,4 +1,5 @@
 <script setup lang="ts">
+defineOptions({ name: 'AppLayout' });
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
 import AuthModal from '@/components/auth/AuthModal.vue'
@@ -19,7 +20,6 @@ const showConfirmModal = ref(false)
 const confirmMessage = ref('')
 const confirmStatus = ref<'success' | 'error'>('success')
 const redirectPath = ref<string | null>(null)
-
 // Gestion confirmation email
 watch(
   () => route.query.token,
@@ -41,9 +41,9 @@ watch(
       redirectPath.value = data.user.role === 'admin' ? '/admin' : '/dashboard'
       confirmStatus.value = 'success'
       confirmMessage.value = 'Ton adresse email a bien été confirmée 🎉'
-    } catch (err: any) {
+    } catch (err: unknown) {
       confirmStatus.value = 'error'
-      confirmMessage.value = err.message || 'Lien invalide ou expiré.'
+      confirmMessage.value = (typeof err === 'object' && err !== null && 'message' in err) ? (err as { message: string }).message : 'Lien invalide ou expiré.'
     } finally {
       showConfirmModal.value = true
       router.replace({ query: { ...route.query, token: undefined } })
@@ -65,8 +65,9 @@ function handleConfirmClose() {
 <template>
   <div class="layout">
     <AppHeader @auth-requested="showAuthModal = true" />
-
+   
     <main class="layout-content">
+        
       <router-view />
     </main>
 

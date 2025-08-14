@@ -34,3 +34,33 @@ declare module "fastify" {
     };
   }
 }
+
+declare module "@fastify/session" {
+  // Données réellement sérialisées en store (le plus important)
+  interface SessionData {
+    user?: import("./fastify").SessionUser;
+    accountSessionId?: string;
+    pendingInvite?: { token: string; action: "accept" | "decline" } | null;
+  }
+
+  // Interface runtime (parfois utile selon la version)
+  interface Session {
+    user?: import("./fastify").SessionUser;
+    accountSessionId?: string;
+    pendingInvite?: { token: string; action: "accept" | "decline" } | null;
+  }
+}
+declare module "fastify" {
+  interface FastifyRequest {
+    session: import("@fastify/session").FastifySessionObject & {
+      pendingInvite?: { token: string; action: "accept" | "decline" } | null;
+      user?: SessionUser;
+      accountSessionId?: string;
+    };
+  }
+}
+declare module "fastify" {
+  interface SessionStoreData {
+    pendingInvite?: { token: string; action: "accept" | "decline" } | null;
+  }
+}

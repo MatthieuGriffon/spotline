@@ -7,7 +7,6 @@ import {
   fetchGroupDetails,
   updateGroup,
   leaveGroup,
-  inviteUserToGroup,
   changeMemberRole,
   removeMemberFromGroup,
 } from '@/api/groups'
@@ -120,19 +119,7 @@ export const useGroupsStore = defineStore('groups', () => {
     }
   }
 
-  // 📩 Inviter un utilisateur
-  async function inviteUser(groupId: string, userId: string, role: GroupRole) {
-    setLoading(true)
-    setError(null)
-    try {
-      await inviteUserToGroup(groupId, userId, role)
-      setSuccess('Utilisateur invité avec succès')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur lors de l’invitation')
-    } finally {
-      setLoading(false)
-    }
-  }
+  
 
   // 🔄 Changer le rôle d’un membre
   async function changeRole(groupId: string, userId: string, role: GroupRole) {
@@ -181,7 +168,6 @@ export const useGroupsStore = defineStore('groups', () => {
     loadGroupDetails,
     editGroup,
     leaveGroupAction,
-    inviteUser,
     changeRole,
     removeMember,
   }

@@ -1,90 +1,199 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, ref, computed, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useGroupsStore } from '@/stores/useGroupsStore'
 import { useAuthStore } from '@/stores/useAuthStore'
-
+import { useInvitationsStore } from '@/stores/invitationsStore'
+import type { GroupInvitationAdminItem } from '@/types/invitations'
 const route = useRoute()
 const router = useRouter()
-const store = useGroupsStore()
+let redirectedNotFound = false
+const groups = useGroupsStore()
 const auth = useAuthStore()
+const invitations = useInvitationsStore()
 
-const groupId = ref(String(route.params.id))
+/** ====== Routing / Id ====== */
+const groupId = ref<string>(String(route.params.id ?? ''))
 
-// États locaux (édition + invitation)
+/** ====== Local pending flags ====== */
+const pending = ref<{
+  role: string | null
+  remove: string | null
+  revoke: string | null
+  save: boolean
+  invite: boolean
+}>({
+  role: null,
+  remove: null,
+  revoke: null,
+  save: false,
+  invite: false,
+})
+
+async function loadGroup() {
+  if (!auth.user && auth.fetchMe) {
+    try {
+      await auth.fetchMe()
+    } catch {}
+  }
+
+  await groups.loadGroupDetails(groupId.value)
+
+  if (!groups.currentGroup) {
+    if (!redirectedNotFound) {
+      redirectedNotFound = true
+      router.replace({ name: 'NotFound' })
+    }
+    return
+  }
+
+  editName.value = groups.currentGroup.name
+  editDescription.value = groups.currentGroup.description ?? ''
+}
+
+onMounted(loadGroup)
+
+watch(
+  () => route.params.id,
+  async (val) => {
+    if (typeof val === 'string' && val !== groupId.value) {
+      redirectedNotFound = false // ✅ reset le flag pour la nouvelle page
+      groupId.value = val
+      await loadGroup()
+    }
+  },
+)
+/** ====== Computed / Status ====== */
+const current = computed(() => groups.currentGroup)
+
+const canManage = computed(() => {
+  const meId = auth.user?.id
+  const members = groups.currentGroup?.members ?? []
+  return !!meId && members.some((m) => m.userId === meId && m.role === 'admin')
+})
+
+const admins = computed(() => current.value?.members.filter((m) => m.role === 'admin') ?? [])
+const meId = computed(() => auth.user?.id ?? null)
+const isSoleAdmin = computed(
+  () => !!meId.value && admins.value.length === 1 && admins.value[0]?.userId === meId.value,
+)
+
+// isLoading = chargement du groupe + (invites seulement si canManage)
+const invitesLoadingForThisGroup = computed(() => {
+  return canManage.value && invitations.isLoading
+})
+const isLoading = computed(() => groups.isLoading || invitesLoadingForThisGroup.value)
+
+const groupError = computed(() => groups.errorMessage)
+const groupSuccess = computed(() => groups.successMessage)
+const invError = computed(() => invitations.errorMessage)
+const invSuccess = computed(() => invitations.successMessage)
+
+const groupInvites = computed<GroupInvitationAdminItem[]>(
+  () => invitations.groupInvitations[groupId.value] ?? [],
+)
+
+/** ====== Invitations auto-load quand canManage + groupId ====== */
+const loadingInvitesFor = ref<string | null>(null)
+const lastLoadedInvitesFor = ref<string | null>(null)
+
+watchEffect(async () => {
+  if (!current.value || !canManage.value) return
+  if (loadingInvitesFor.value === groupId.value) return
+  if (lastLoadedInvitesFor.value === groupId.value) return
+
+  loadingInvitesFor.value = groupId.value
+  try {
+    await invitations.loadForGroup(groupId.value)
+    lastLoadedInvitesFor.value = groupId.value
+  } finally {
+    loadingInvitesFor.value = null
+  }
+})
+
+/** ====== Edit group ====== */
 const isEditing = ref(false)
 const editName = ref('')
 const editDescription = ref('')
 
-const inviteUserId = ref('')
-const inviteRole = ref<'admin' | 'member' | 'guest'>('member')
-
-// ----- Data loading -----
-async function load() {
-  await store.loadGroupDetails(groupId.value)
-
-  if (!store.currentGroup) {
-    // Si pas trouvé → redirection vers NotFound
-    router.replace({ name: 'NotFound' })
-    return
-  }
-
-  editName.value = store.currentGroup.name
-  editDescription.value = store.currentGroup.description ?? ''
-}
-
-onMounted(load)
-
-watch(() => route.params.id, (val) => {
-  if (typeof val === 'string') {
-    groupId.value = val
-    load()
-  }
+const isDirty = computed(() => {
+  if (!current.value) return false
+  return (
+    editName.value.trim() !== current.value.name ||
+    (editDescription.value.trim() || '') !== (current.value.description || '')
+  )
 })
 
-// ----- Computed -----
-const current = computed(() => store.currentGroup)
-const isLoading = computed(() => store.isLoading)
-const errorMessage = computed(() => store.errorMessage)
-const successMessage = computed(() => store.successMessage)
-
-const canManage = computed(() => {
-  const meId = auth.user?.id
-  const members = store.currentGroup?.members ?? []
-  return !!meId && members.some(m => m.userId === meId && m.role === 'admin')
-})
-
-// ----- Actions -----
 async function saveEdit() {
   if (!current.value) return
-  await store.editGroup(current.value.id, editName.value.trim(), editDescription.value.trim() || undefined)
-  isEditing.value = false
+  if (!editName.value.trim() || !isDirty.value) return
+  pending.value.save = true
+  try {
+    await groups.editGroup(
+      current.value.id,
+      editName.value.trim(),
+      editDescription.value.trim() || undefined,
+    )
+    isEditing.value = false
+    // recharger pour refléter
+    await groups.loadGroupDetails(groupId.value)
+  } finally {
+    pending.value.save = false
+  }
 }
 
-async function sendInvite() {
-  if (!current.value || !inviteUserId.value.trim()) return
-  await store.inviteUser(current.value.id, inviteUserId.value.trim(), inviteRole.value)
-  inviteUserId.value = ''
-  inviteRole.value = 'member'
-  await store.loadGroupDetails(groupId.value) // <-- .value
-}
-
+/** ====== Members actions ====== */
 async function changeRole(userId: string, role: 'admin' | 'member' | 'guest') {
   if (!current.value) return
-  await store.changeRole(current.value.id, userId, role)
-  await store.loadGroupDetails(groupId.value) // <-- .value
+  // empêcher de retirer ton propre rôle d’admin si tu es le seul admin
+  if (isSoleAdmin.value && userId === meId.value && role !== 'admin') {
+    alert("Tu es le dernier admin : nomme d'abord un autre admin.")
+    return
+  }
+  pending.value.role = userId
+  try {
+    await groups.changeRole(current.value.id, userId, role)
+    await groups.loadGroupDetails(groupId.value)
+  } finally {
+    pending.value.role = null
+  }
 }
 
 async function removeMember(userId: string) {
   if (!current.value) return
-  await store.removeMember(current.value.id, userId)
-  await store.loadGroupDetails(groupId.value) // <-- .value
+
+  // empêcher de retirer le dernier admin
+  if (admins.value.length === 1 && admins.value[0].userId === userId) {
+    alert('Impossible de retirer le dernier admin du groupe.')
+    return
+  }
+
+  // éviter de te retirer toi-même via ce bouton (utilise "Quitter le groupe")
+  if (userId === meId.value) {
+    alert('Pour quitter le groupe, utilise "Quitter le groupe".')
+    return
+  }
+
+  pending.value.remove = userId
+  try {
+    await groups.removeMember(current.value.id, userId)
+    await groups.loadGroupDetails(groupId.value)
+  } finally {
+    pending.value.remove = null
+  }
 }
 
 async function leave() {
   if (!current.value) return
+
+  // empêcher de quitter si tu es le dernier admin
+  if (isSoleAdmin.value) {
+    alert("Tu es le dernier admin. Transfère d'abord l'admin à quelqu'un d'autre.")
+    return
+  }
+
   if (confirm('Quitter ce groupe ?')) {
-    await store.leaveGroupAction(current.value.id)
+    await groups.leaveGroupAction(current.value.id)
     router.push('/groupes')
   }
 }
@@ -92,6 +201,108 @@ async function leave() {
 function goBack() {
   router.push('/groupes')
 }
+
+/** ====== Invitations (Email direct + liens) ====== */
+/* A) Email direct */
+const directEmail = ref('')
+const emailError = ref<string | null>(null)
+
+function validateEmail() {
+  const value = directEmail.value.trim()
+  if (!value) {
+    emailError.value = 'Adresse e‑mail requise'
+    return
+  }
+  const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+  emailError.value = ok ? null : 'Adresse e‑mail invalide'
+}
+watch(directEmail, validateEmail)
+
+async function sendDirectInviteByEmail() {
+  validateEmail()
+  if (emailError.value || !current.value) return
+
+  pending.value.invite = true
+  try {
+    await invitations.sendDirect(current.value.id, {
+      by: 'email',
+      email: directEmail.value.trim().toLowerCase(),
+      joinAuto: false, // ↩️ mode validation obligatoire
+    })
+
+    // On recharge uniquement la liste des invitations (plus de branche joinAuto)
+    await invitations.loadForGroup(groupId.value)
+
+    // Reset champ
+    directEmail.value = ''
+  } finally {
+    pending.value.invite = false
+  }
+}
+
+/* B) Lien/QR */
+const linkExpiresInDays = ref<number | undefined>(7)
+const linkMaxUses = ref<number | undefined>(5)
+const lastCreatedLink = ref<null | {
+  token: string
+  url: string
+  expiresAt: string
+  maxUses: number
+}>(null)
+
+async function createInviteLink() {
+  if (!current.value) return
+
+  const expires = Number.isFinite(linkExpiresInDays.value ?? NaN)
+    ? linkExpiresInDays.value
+    : undefined
+
+  const max = Number.isFinite(linkMaxUses.value ?? NaN) ? linkMaxUses.value : undefined
+
+  const result = await invitations.createLink(current.value.id, {
+    expiresInDays: expires,
+    maxUses: max,
+  })
+
+  lastCreatedLink.value = result
+  await invitations.loadForGroup(groupId.value)
+}
+
+async function copyToClipboard(text: string) {
+  try {
+    if (typeof window !== 'undefined' && 'clipboard' in navigator) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    invitations.setSuccess('Lien copié dans le presse-papiers') // ← sans ?.
+  } catch {
+    invitations.setError('Impossible de copier le lien') // ← sans ?.
+  }
+}
+
+async function revoke(invitationId: string) {
+  if (!current.value) return
+  pending.value.revoke = invitationId
+  try {
+    await invitations.revoke(current.value.id, invitationId)
+    await invitations.loadForGroup(groupId.value)
+  } finally {
+    pending.value.revoke = null
+  }
+}
+
+async function refreshInvites() {
+  if (!current.value) return
+  await invitations.loadForGroup(current.value.id)
+}
+
+
 </script>
 
 <template>
@@ -126,14 +337,20 @@ function goBack() {
         </div>
         <p v-if="current.description" class="subtitle">{{ current.description }}</p>
         <div class="meta">
-          Créé le <time :datetime="current.createdAt">{{ new Date(current.createdAt).toLocaleString() }}</time> •
+          Créé le
+          <time :datetime="current.createdAt">
+            {{ new Date(current.createdAt).toLocaleString() }}
+          </time>
+          •
           {{ current.members.length }} membre{{ current.members.length > 1 ? 's' : '' }}
         </div>
       </div>
 
-      <!-- Status -->
-      <div v-if="errorMessage" class="status error">{{ errorMessage }}</div>
-      <div v-if="successMessage" class="status success">{{ successMessage }}</div>
+      <!-- Status (group + invitations) -->
+      <div v-if="groupError" class="status error" aria-live="polite">{{ groupError }}</div>
+      <div v-if="groupSuccess" class="status success" aria-live="polite">{{ groupSuccess }}</div>
+      <div v-if="invError" class="status error" aria-live="polite">{{ invError }}</div>
+      <div v-if="invSuccess" class="status success" aria-live="polite">{{ invSuccess }}</div>
 
       <!-- Édition du groupe -->
       <section class="section-block" v-if="isEditing && canManage">
@@ -151,7 +368,13 @@ function goBack() {
           </div>
           <div class="row-actions">
             <button class="btn" @click="isEditing = false">Annuler</button>
-            <button class="btn primary" @click="saveEdit" :disabled="!editName.trim()">Enregistrer</button>
+            <button
+              class="btn primary"
+              @click="saveEdit"
+              :disabled="pending.save || !editName.trim() || !isDirty"
+            >
+              {{ pending.save ? '...' : 'Enregistrer' }}
+            </button>
           </div>
         </div>
       </section>
@@ -163,39 +386,135 @@ function goBack() {
           <li v-for="m in current.members" :key="m.userId" class="member-item">
             <div class="info">
               <div class="pseudo">{{ m.pseudo }}</div>
-              <div class="role">Rôle : <strong>{{ m.role }}</strong></div>
+              <div class="role">
+                Rôle : <strong>{{ m.role }}</strong>
+              </div>
             </div>
 
             <div class="member-actions" v-if="canManage">
               <select
                 :value="m.role"
-                @change="changeRole(m.userId, ($event.target as HTMLSelectElement).value as any)"
+                @change="
+                  changeRole(
+                    m.userId,
+                    ($event.target as HTMLSelectElement).value as 'admin' | 'member' | 'guest',
+                  )
+                "
+                :disabled="
+                  pending.role === m.userId ||
+                  (isSoleAdmin && m.userId === meId && m.role === 'admin')
+                "
                 aria-label="Changer le rôle"
               >
                 <option value="admin">admin</option>
                 <option value="member">member</option>
                 <option value="guest">guest</option>
               </select>
-              <button class="btn danger" @click="removeMember(m.userId)" :disabled="isLoading">
-                Retirer
+              <button
+                class="btn danger"
+                @click="removeMember(m.userId)"
+                :disabled="
+                  pending.remove === m.userId ||
+                  (admins.length === 1 && admins[0].userId === m.userId) ||
+                  m.userId === meId
+                "
+              >
+                {{ pending.remove === m.userId ? '...' : 'Retirer' }}
               </button>
             </div>
           </li>
         </ul>
       </section>
 
-      <!-- Invitation -->
+      <!-- Invitations (ADMIN ONLY) -->
       <section class="section-block" v-if="canManage">
+        <div class="card" style="margin-bottom: 0.75rem">
+  <h3 class="sub-title">Invitation par e-mail</h3>
+  <div class="invite-grid">
+    <input
+      v-model.trim="directEmail"
+      type="email"
+      inputmode="email"
+      placeholder="email@exemple.com"
+      @blur="validateEmail()"
+      :class="{ invalid: !!emailError }"
+      :aria-invalid="!!emailError"
+      :aria-describedby="emailError ? 'email-error' : undefined"
+    />
+    <button
+      class="btn primary"
+      @click="sendDirectInviteByEmail"
+      :disabled="pending.invite || !directEmail || !!emailError"
+    >
+      {{ pending.invite ? '...' : 'Envoyer' }}
+    </button>
+  </div>
+  <p v-if="emailError" id="email-error" class="form-error">{{ emailError }}</p>
+</div>
+
         <div class="card">
-          <h2 class="section-title">Inviter un utilisateur</h2>
-          <div class="invite-grid">
-            <input v-model="inviteUserId" placeholder="ID utilisateur" />
-            <select v-model="inviteRole" aria-label="Rôle attribué">
-              <option value="member">member</option>
-              <option value="guest">guest</option>
-              <option value="admin">admin</option>
-            </select>
-            <button class="btn primary" @click="sendInvite" :disabled="!inviteUserId.trim()">Inviter</button>
+          <h3 class="sub-title">Lien d’invitation</h3>
+          <div class="invite-link-grid">
+            <label>
+              <span>Expire dans (jours)</span>
+              <input type="number" min="1" step="1" v-model.number="linkExpiresInDays" />
+            </label>
+            <label>
+              <span>Nombre max d’utilisations</span>
+              <input type="number" min="1" step="1" v-model.number="linkMaxUses" />
+            </label>
+            <button class="btn" @click="createInviteLink">Générer</button>
+          </div>
+
+          <div v-if="lastCreatedLink" class="generated-link">
+            <div class="row">
+              <span class="mono">{{ lastCreatedLink.url }}</span>
+              <button class="btn" @click="copyToClipboard(lastCreatedLink.url)">Copier</button>
+            </div>
+            <small
+              >Expire le {{ new Date(lastCreatedLink.expiresAt).toLocaleString() }} • max
+              {{ lastCreatedLink.maxUses }} usages</small
+            >
+          </div>
+
+          <div class="admin-invites">
+            <div class="row between">
+              <h4>Invitations actives</h4>
+              <button class="btn" @click="refreshInvites">Rafraîchir</button>
+            </div>
+            <ul class="list">
+              <li v-for="inv in groupInvites" :key="inv.id" class="row">
+                <div class="col">
+                  <div class="title-row">
+                    {{ inv.type === 'direct' ? 'Direct' : 'Lien' }}
+                    <template v-if="inv.email"> — {{ inv.email }}</template>
+                    <span class="badge" :data-status="inv.status" style="margin-left: 0.5rem">
+                      {{ inv.status }}
+                    </span>
+                  </div>
+                  <small>
+                    créé le
+                    <time :datetime="inv.createdAt">{{
+                      new Date(inv.createdAt).toLocaleString()
+                    }}</time>
+                    • exp {{ inv.expiresAt ? new Date(inv.expiresAt).toLocaleString() : '—' }} •
+                    uses {{ inv.uses }}/{{ inv.maxUses ?? '∞' }}
+                  </small>
+                </div>
+
+                <button
+                  class="btn danger"
+                  @click="revoke(inv.id)"
+                  :disabled="
+                    pending.revoke === inv.id ||
+                    inv.status === 'REVOKED' ||
+                    inv.status === 'ACCEPTED'
+                  "
+                >
+                  {{ pending.revoke === inv.id ? '...' : 'Révoquer' }}
+                </button>
+              </li>
+            </ul>
           </div>
         </div>
       </section>
@@ -242,97 +561,291 @@ function goBack() {
 
 <style scoped lang="scss">
 .group-detail-wrapper {
-  max-width: 90%;
+  max-width: 100%;
   margin: 0.5rem auto;
   padding: 0.5rem;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 0 12px rgba(0,0,0,0.05);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 /* header */
 .page-header {
   background: #1f2937;
   padding: 0.75rem 1rem;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   margin-bottom: 1rem;
-  color: #fff;
+  color: var(--color-text-inverted);
 
   .header-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: .75rem;
+    gap: 0.75rem;
   }
-  .title { margin: 0; font-weight: 700; color: #fff; }
-  .subtitle { margin: .25rem 0 0; color: #e5e7eb; }
-  .meta { margin-top: .25rem; font-size: .9rem; color: #cbd5e1; }
+  .title {
+    margin: 0;
+    font-weight: 700;
+    color: var(--color-text-inverted);
+  }
+  .subtitle {
+    margin: 0.25rem 0 0;
+    color: #e5e7eb;
+  }
+  .meta {
+    margin-top: 0.25rem;
+    font-size: 0.9rem;
+    color: #cbd5e1;
+  }
 }
-.actions { display: flex; gap: .5rem; }
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
 
 /* status */
-.status { font-style: italic; margin: .75rem 0;
-  &.error { color: #dc2626; }
-  &.success { color: #0d9488; }
+.status {
+  font-style: italic;
+  margin: 0.75rem 0;
+  &.error {
+    color: var(--color-error);
+  }
+  &.success {
+    color: var(--color-success);
+  }
 }
 
 /* sections */
-.section-block { margin-bottom: 1.25rem; }
-.section-title { font-size: 1.05rem; margin: 0 0 .5rem; color: #111827; font-weight: 700; }
+.section-block {
+  margin-bottom: 1.25rem;
+}
+.section-title {
+  font-size: 1.05rem;
+  margin: 0 0 0.5rem;
+  color: #111827;
+  font-weight: 700;
+}
+.sub-title {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+  color: #111827;
+}
 
 /* cards / lists */
 .card {
-  background: #f9fafb;
-  border-radius: 10px;
-  padding: .75rem;
+  background: var(--color-background-soft);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  box-shadow: var(--shadow-sm);
 }
-.form-grid { display: grid; gap: .5rem; }
-.form-grid label span { display: block; font-size: .9rem; color: #374151; margin-bottom: .25rem; }
+.form-grid {
+  display: grid;
+  gap: 0.5rem;
+}
+.form-grid label span {
+  display: block;
+  font-size: 0.9rem;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
 
-.members-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.members-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
 .member-item {
-  display: flex; align-items: center; justify-content: space-between; gap: .75rem;
-  background: #f1f5f9; border-radius: 10px; padding: .6rem .75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: #f1f5f9;
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.75rem;
 }
-.member-item .info .pseudo { font-weight: 600; color: #111827; }
-.member-actions { display: flex; align-items: center; gap: .5rem; }
+.member-item .info .pseudo {
+  font-weight: 600;
+  color: #111827;
+}
+.member-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 
-.invite-grid { display: grid; grid-template-columns: 1fr auto auto; gap: .5rem; }
+.invite-grid {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #374151;
+}
 
-.list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
-.row { background: #f1f5f9; padding: .6rem .75rem; border-radius: 10px; }
-.title-row { font-weight: 600; color: #111827; }
+.link-result {
+  margin-top: 0.5rem;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem;
+}
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.row {
+  background: #f1f5f9;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-md);
+}
+.title-row {
+  font-weight: 600;
+  color: #111827;
+}
+
+/* invitations list */
+.list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.invites-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.invite-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: #f1f5f9;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-md);
+}
+.invite-item .line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  background: #e5e7eb;
+  color: #111827;
+}
+.badge[data-status='REVOKED'] {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.badge[data-status='PENDING'] {
+  background: #e0f2fe;
+  color: #075985;
+}
+.badge[data-status='ACCEPTED'] {
+  background: #dcfce7;
+  color: #166534;
+}
+.badge[data-status='DECLINED'] {
+  background: #fef9c3;
+  color: #854d0e;
+}
+.muted {
+  color: #64748b;
+}
+.col.actions {
+  display: flex;
+  align-items: center;
+}
 
 /* buttons */
 .btn {
-  border: none; border-radius: 10px; padding: .55rem .9rem; cursor: pointer;
-  display: inline-flex; align-items: center; gap: .4rem; font-size: .95rem;
-  background: #e5e7eb; color: #111827;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.55rem 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  background: #e5e7eb;
+  color: #111827;
 }
-.btn.primary { background: #0d9488; color: #fff; }
-.btn.back { background: #e5e7eb; }
-.btn.danger { background: #dc2626; color: #fff; }
+.btn.primary {
+  background: var(--color-primary);
+  color: var(--color-text-inverted);
+}
+.btn.back {
+  background: #e5e7eb;
+}
+.btn.danger {
+  background: var(--color-error);
+  color: var(--color-text-inverted);
+}
+
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
 
 /* inputs */
-input, textarea, select {
+input,
+textarea,
+select {
   width: 100%;
-  padding: .55rem .6rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   background: #fff;
   font-size: 1rem;
 }
 
 /* skeleton */
 .skeleton .skel {
-  background: linear-gradient(90deg,#f2f4f7 25%,#e9edf3 37%,#f2f4f7 63%);
+  background: linear-gradient(90deg, #f2f4f7 25%, #e9edf3 37%, #f2f4f7 63%);
   background-size: 400% 100%;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   animation: shimmer 1.4s ease infinite;
 }
-.skel-title { height: 24px; width: 40%; margin: 1rem 0; }
-.skel-card { height: 64px; margin: 0.5rem 0; }
-@keyframes shimmer { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+.skel-title {
+  height: 24px;
+  width: 40%;
+  margin: 1rem 0;
+}
+.skel-card {
+  height: 64px;
+  margin: 0.5rem 0;
+}
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
 
-.danger-zone { display:flex; justify-content:flex-end; }
+.danger-zone {
+  display: flex;
+  justify-content: flex-end;
+}
 </style>

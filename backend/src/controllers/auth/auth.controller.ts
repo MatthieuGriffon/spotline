@@ -14,6 +14,8 @@ import {
 import { ChangePasswordBody } from "@/schemas/auth/changePassword.schema";
 import { confirmEmailToken } from "@/services/emailConfirmationService";
 import { createAccountSession } from "@/services/user/user.services";
+import { linkEmailInvitationsOnLogin } from "@/services/groupes/invitations.service";
+
 type ConfirmBody = { token: string }
 // Helper pour transformer un user DB → SessionUser
 function toSessionUser(user: any): SessionUser {
@@ -97,6 +99,18 @@ export async function login(
   request.session.user = toSessionUser(user);
   request.session.accountSessionId = session.id;
 
+  // 👇 Lie les invitations envoyées à l'email au compte fraîchement connecté (reste en PENDING)
+  if (user.email) {
+    try {
+      await linkEmailInvitationsOnLogin(request.server, {
+        userId: user.id,
+        email: user.email,
+      });
+    } catch (e) {
+      request.log.warn({ e }, "linkEmailInvitationsOnLogin failed");
+    }
+  }
+
   reply.send({ message: "Connexion réussie" });
 }
 
@@ -121,13 +135,25 @@ export async function getMe(request: FastifyRequest, reply: FastifyReply) {
         isConfirmed: true,
       },
     });
-
     if (!fullUser) return reply.notFound("Utilisateur introuvable");
 
-    console.debug("[DEBUG] getMe - Full user:", fullUser);
+    // 👇 Filet de sécurité : lie les invitations envoyées à l'email au compte (reste en PENDING)
+    if (fullUser.email) {
+      try {
+        await linkEmailInvitationsOnLogin(request.server, {
+          userId: fullUser.id,
+          email: fullUser.email,
+        });
+      } catch (e) {
+        request.log.warn({ e }, "linkEmailInvitationsOnLogin failed (getMe)");
+        // on n’interrompt pas la réponse /auth/me
+      }
+    }
+
+    // Tu gardes exactement le même payload qu’avant
     reply.send(fullUser);
   } catch (err) {
-    console.error("[ERREUR /auth/me]", err);
+    request.log.error({ err }, "[ERREUR /auth/me]");
     reply.internalServerError(
       "Erreur lors de la récupération de l'utilisateur"
     );
