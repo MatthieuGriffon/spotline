@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { checkPendingInvite } from '@/utils/checkPendingInvite'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -101,7 +102,11 @@ const router = createRouter({
       component: () => import('@/views/ProfilePassword/ProfilePasswordView.vue'),
       meta: { requiresAuth: true },
     },
-    { path: '/groupes', name: 'groups-list', component: () => import('@/views/groups/GroupsView.vue') },
+    {
+      path: '/groupes',
+      name: 'groups-list',
+      component: () => import('@/views/groups/GroupsView.vue'),
+    },
     {
       path: '/groupes/nouveau',
       name: 'group-new',
@@ -118,13 +123,18 @@ const router = createRouter({
       name: 'not-found',
       component: () => import('@/views/NotFound/NotFound.vue'),
     },
+    {
+      path: '/invite/:token',
+      name: 'invite',
+      component: () => import('@/views/inviteView/InviteView.vue'),
+    },
   ],
 })
 
 router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
 
-  // 1) Hydrate l'user si inconnu
+  // 1️⃣ Hydrate user si pas encore fait
   if (!auth.user) {
     try {
       await auth.fetchMe()
@@ -138,40 +148,53 @@ router.beforeEach(async (to, from, next) => {
   const requiredRole = String(to.meta.role || '').toLowerCase()
   const requiresAuth = Boolean(to.meta.requiresAuth)
 
-  console.debug(
-    '[DEBUG] Navigation vers',
-    to.path,
-    '| rôle utilisateur :',
-    role,
-    '| attendu :',
-    requiredRole,
-    '| requiresAuth :',
-    requiresAuth,
-  )
+  // 2️⃣ Gestion des liens d'invitation directs
+  if (to.name === 'invite' && typeof to.params.token === 'string') {
+    const token = to.params.token
+    const expires = Date.now() + 1000 * 60 * 10 // 10 min
 
-  // 2) Auth requise ?
+    if (!user) {
+      // 🔹 Pas connecté → on stocke et on redirige vers /
+      localStorage.setItem('pendingInvite', JSON.stringify({ token, expires }))
+      return next({ path: '/', query: { redirect: '/' } })
+    } else {
+      // 🔹 Déjà connecté → traite immédiatement
+      const groupId = await checkPendingInvite(token) // ✅ on passe le token
+      if (groupId) return next(`/groupes/${groupId}`)
+      return next('/groups') // fallback si token invalide
+    }
+  }
+
+  // 3️⃣ Cas où l’utilisateur vient de se connecter et a un token stocké
+  if (user && localStorage.getItem('pendingInvite')) {
+    const groupId = await checkPendingInvite()
+    if (groupId) return next(`/groupes/${groupId}`)
+  }
+
+  // 4️⃣ Auth requise ?
   if (requiresAuth && !user) {
     return next({ path: '/login', query: { redirect: to.fullPath } })
   }
 
-  // 3) Protection des routes admin explicites
+  // 5️⃣ Routes admin
   if (to.path.startsWith('/admin')) {
     if (!user) return next({ path: '/login', query: { redirect: to.fullPath } })
     if (role !== 'admin') return next('/dashboard')
   }
 
-  // 4) Règle "role" optionnelle par meta (facultatif, pour d’autres sections)
+  // 6️⃣ Vérif du role
   if (requiredRole && role !== requiredRole) {
-    // Redirige vers le bon tableau de bord selon le rôle connu
     return next(role === 'admin' ? '/admin' : '/dashboard')
   }
 
-  // 5) Si déjà connecté et on va sur /login, redirige vers le bon dashboard
+  // 7️⃣ Si déjà connecté et on va sur /login
   if (to.path === '/login' && user) {
     return next(role === 'admin' ? '/admin' : '/dashboard')
   }
 
   return next()
 })
+
+
 
 export default router

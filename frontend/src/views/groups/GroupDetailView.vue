@@ -4,28 +4,27 @@ import { useRoute, useRouter } from 'vue-router'
 import { useGroupsStore } from '@/stores/useGroupsStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useInvitationsStore } from '@/stores/invitationsStore'
+import { useBannerStore } from '@/stores/bannerStore' // ✅ ajouté
 import type { GroupInvitationAdminItem } from '@/types/invitations'
+
 const route = useRoute()
 const router = useRouter()
-let redirectedNotFound = false
+
 const groups = useGroupsStore()
 const auth = useAuthStore()
 const invitations = useInvitationsStore()
+const bannerStore = useBannerStore() 
+
+let redirectedNotFound = false
 
 /** ====== Routing / Id ====== */
 const groupId = ref<string>(String(route.params.id ?? ''))
 
 /** ====== Local pending flags ====== */
-const pending = ref<{
-  role: string | null
-  remove: string | null
-  revoke: string | null
-  save: boolean
-  invite: boolean
-}>({
-  role: null,
-  remove: null,
-  revoke: null,
+const pending = ref({
+  role: null as string | null,
+  remove: null as string | null,
+  revoke: null as string | null,
   save: false,
   invite: false,
 })
@@ -51,52 +50,61 @@ async function loadGroup() {
   editDescription.value = groups.currentGroup.description ?? ''
 }
 
-onMounted(loadGroup)
+onMounted(async () => {
+  await loadGroup()
+
+  // ✅ Si on vient de rejoindre ce groupe, recharger la liste globale
+  if (
+    bannerStore.recentJoin &&
+    bannerStore.recentJoin.groupName === groups.currentGroup?.name
+  ) {
+    await groups.loadGroups()
+  }
+})
+onMounted(() => {
+  if (bannerStore.recentJoin) {
+    setTimeout(() => {
+      bannerStore.clearRecentJoin()
+    }, 5000)
+  }
+})
 
 watch(
   () => route.params.id,
   async (val) => {
     if (typeof val === 'string' && val !== groupId.value) {
-      redirectedNotFound = false // ✅ reset le flag pour la nouvelle page
+      redirectedNotFound = false
       groupId.value = val
       await loadGroup()
     }
   },
 )
+
 /** ====== Computed / Status ====== */
 const current = computed(() => groups.currentGroup)
-
 const canManage = computed(() => {
   const meId = auth.user?.id
   const members = groups.currentGroup?.members ?? []
   return !!meId && members.some((m) => m.userId === meId && m.role === 'admin')
 })
-
 const admins = computed(() => current.value?.members.filter((m) => m.role === 'admin') ?? [])
 const meId = computed(() => auth.user?.id ?? null)
 const isSoleAdmin = computed(
   () => !!meId.value && admins.value.length === 1 && admins.value[0]?.userId === meId.value,
 )
-
-// isLoading = chargement du groupe + (invites seulement si canManage)
-const invitesLoadingForThisGroup = computed(() => {
-  return canManage.value && invitations.isLoading
-})
+const invitesLoadingForThisGroup = computed(() => canManage.value && invitations.isLoading)
 const isLoading = computed(() => groups.isLoading || invitesLoadingForThisGroup.value)
-
 const groupError = computed(() => groups.errorMessage)
 const groupSuccess = computed(() => groups.successMessage)
 const invError = computed(() => invitations.errorMessage)
 const invSuccess = computed(() => invitations.successMessage)
-
 const groupInvites = computed<GroupInvitationAdminItem[]>(
   () => invitations.groupInvitations[groupId.value] ?? [],
 )
 
-/** ====== Invitations auto-load quand canManage + groupId ====== */
+/** ====== Invitations auto-load ====== */
 const loadingInvitesFor = ref<string | null>(null)
 const lastLoadedInvitesFor = ref<string | null>(null)
-
 watchEffect(async () => {
   if (!current.value || !canManage.value) return
   if (loadingInvitesFor.value === groupId.value) return
@@ -115,7 +123,6 @@ watchEffect(async () => {
 const isEditing = ref(false)
 const editName = ref('')
 const editDescription = ref('')
-
 const isDirty = computed(() => {
   if (!current.value) return false
   return (
@@ -123,7 +130,6 @@ const isDirty = computed(() => {
     (editDescription.value.trim() || '') !== (current.value.description || '')
   )
 })
-
 async function saveEdit() {
   if (!current.value) return
   if (!editName.value.trim() || !isDirty.value) return
@@ -135,7 +141,6 @@ async function saveEdit() {
       editDescription.value.trim() || undefined,
     )
     isEditing.value = false
-    // recharger pour refléter
     await groups.loadGroupDetails(groupId.value)
   } finally {
     pending.value.save = false
@@ -145,7 +150,6 @@ async function saveEdit() {
 /** ====== Members actions ====== */
 async function changeRole(userId: string, role: 'admin' | 'member' | 'guest') {
   if (!current.value) return
-  // empêcher de retirer ton propre rôle d’admin si tu es le seul admin
   if (isSoleAdmin.value && userId === meId.value && role !== 'admin') {
     alert("Tu es le dernier admin : nomme d'abord un autre admin.")
     return
@@ -161,19 +165,14 @@ async function changeRole(userId: string, role: 'admin' | 'member' | 'guest') {
 
 async function removeMember(userId: string) {
   if (!current.value) return
-
-  // empêcher de retirer le dernier admin
   if (admins.value.length === 1 && admins.value[0].userId === userId) {
     alert('Impossible de retirer le dernier admin du groupe.')
     return
   }
-
-  // éviter de te retirer toi-même via ce bouton (utilise "Quitter le groupe")
   if (userId === meId.value) {
     alert('Pour quitter le groupe, utilise "Quitter le groupe".')
     return
   }
-
   pending.value.remove = userId
   try {
     await groups.removeMember(current.value.id, userId)
@@ -185,13 +184,10 @@ async function removeMember(userId: string) {
 
 async function leave() {
   if (!current.value) return
-
-  // empêcher de quitter si tu es le dernier admin
   if (isSoleAdmin.value) {
     alert("Tu es le dernier admin. Transfère d'abord l'admin à quelqu'un d'autre.")
     return
   }
-
   if (confirm('Quitter ce groupe ?')) {
     await groups.leaveGroupAction(current.value.id)
     router.push('/groupes')
@@ -202,75 +198,53 @@ function goBack() {
   router.push('/groupes')
 }
 
-/** ====== Invitations (Email direct + liens) ====== */
-/* A) Email direct */
+/** ====== Invitations ====== */
 const directEmail = ref('')
 const emailError = ref<string | null>(null)
-
 function validateEmail() {
   const value = directEmail.value.trim()
   if (!value) {
-    emailError.value = 'Adresse e‑mail requise'
+    emailError.value = 'Adresse e-mail requise'
     return
   }
-  const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-  emailError.value = ok ? null : 'Adresse e‑mail invalide'
+  emailError.value = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+    ? null
+    : 'Adresse e-mail invalide'
 }
 watch(directEmail, validateEmail)
 
 async function sendDirectInviteByEmail() {
   validateEmail()
   if (emailError.value || !current.value) return
-
   pending.value.invite = true
   try {
     await invitations.sendDirect(current.value.id, {
       by: 'email',
       email: directEmail.value.trim().toLowerCase(),
-      joinAuto: false, // ↩️ mode validation obligatoire
+      joinAuto: false,
     })
-
-    // On recharge uniquement la liste des invitations (plus de branche joinAuto)
     await invitations.loadForGroup(groupId.value)
-
-    // Reset champ
     directEmail.value = ''
   } finally {
     pending.value.invite = false
   }
 }
 
-/* B) Lien/QR */
 const linkExpiresInDays = ref<number | undefined>(7)
 const linkMaxUses = ref<number | undefined>(5)
-const lastCreatedLink = ref<null | {
-  token: string
-  url: string
-  expiresAt: string
-  maxUses: number
-}>(null)
-
+const lastCreatedLink = ref<null | { token: string; url: string; expiresAt: string; maxUses: number }>(null)
 async function createInviteLink() {
   if (!current.value) return
-
-  const expires = Number.isFinite(linkExpiresInDays.value ?? NaN)
-    ? linkExpiresInDays.value
-    : undefined
-
+  const expires = Number.isFinite(linkExpiresInDays.value ?? NaN) ? linkExpiresInDays.value : undefined
   const max = Number.isFinite(linkMaxUses.value ?? NaN) ? linkMaxUses.value : undefined
-
-  const result = await invitations.createLink(current.value.id, {
-    expiresInDays: expires,
-    maxUses: max,
-  })
-
+  const result = await invitations.createLink(current.value.id, { expiresInDays: expires, maxUses: max })
   lastCreatedLink.value = result
   await invitations.loadForGroup(groupId.value)
 }
 
 async function copyToClipboard(text: string) {
   try {
-    if (typeof window !== 'undefined' && 'clipboard' in navigator) {
+    if ('clipboard' in navigator) {
       await navigator.clipboard.writeText(text)
     } else {
       const ta = document.createElement('textarea')
@@ -280,9 +254,9 @@ async function copyToClipboard(text: string) {
       document.execCommand('copy')
       document.body.removeChild(ta)
     }
-    invitations.setSuccess('Lien copié dans le presse-papiers') // ← sans ?.
+    invitations.setSuccess('Lien copié dans le presse-papiers')
   } catch {
-    invitations.setError('Impossible de copier le lien') // ← sans ?.
+    invitations.setError('Impossible de copier le lien')
   }
 }
 
@@ -302,11 +276,26 @@ async function refreshInvites() {
   await invitations.loadForGroup(current.value.id)
 }
 
-
+const lastCreatedQR = ref<string | null>(null)
+async function createInviteQR() {
+  const gid = current.value?.id
+  if (!gid) return
+  const expires = Number.isFinite(linkExpiresInDays.value ?? NaN) ? linkExpiresInDays.value! : 7
+  const max = Number.isFinite(linkMaxUses.value ?? NaN) ? linkMaxUses.value! : 10
+  const qr = await invitations.createQR(gid, { expiresInDays: expires, maxUses: max, format: 'png' })
+  lastCreatedQR.value = `data:image/png;base64,${qr}`
+}
 </script>
 
 <template>
   <div class="group-detail-wrapper">
+   <div
+    v-if="bannerStore.recentJoin && bannerStore.recentJoin.groupName === current?.name"
+    class="join-banner"
+  >
+     Tu as rejoint le groupe {{ bannerStore.recentJoin.groupName }} !
+  </div>
+
     <!-- Skeleton -->
     <div v-if="isLoading" class="skeleton">
       <div class="skel skel-title"></div>
@@ -429,28 +418,31 @@ async function refreshInvites() {
       <!-- Invitations (ADMIN ONLY) -->
       <section class="section-block" v-if="canManage">
         <div class="card" style="margin-bottom: 0.75rem">
-  <h3 class="sub-title">Invitation par e-mail</h3>
-  <div class="invite-grid">
-    <input
-      v-model.trim="directEmail"
-      type="email"
-      inputmode="email"
-      placeholder="email@exemple.com"
-      @blur="validateEmail()"
-      :class="{ invalid: !!emailError }"
-      :aria-invalid="!!emailError"
-      :aria-describedby="emailError ? 'email-error' : undefined"
-    />
-    <button
-      class="btn primary"
-      @click="sendDirectInviteByEmail"
-      :disabled="pending.invite || !directEmail || !!emailError"
-    >
-      {{ pending.invite ? '...' : 'Envoyer' }}
-    </button>
-  </div>
-  <p v-if="emailError" id="email-error" class="form-error">{{ emailError }}</p>
-</div>
+          <h3 class="sub-title">Invitation par e-mail</h3>
+          <div class="invite-grid">
+            <input
+              v-model.trim="directEmail"
+              type="email"
+              inputmode="email"
+              placeholder="email@exemple.com"
+              @blur="validateEmail()"
+              :class="{ invalid: !!emailError }"
+              :aria-invalid="!!emailError"
+              :aria-describedby="emailError ? 'email-error' : undefined"
+            />
+            <button
+              class="btn primary"
+              @click="sendDirectInviteByEmail"
+              :disabled="pending.invite || !directEmail || !!emailError"
+            >
+              {{ pending.invite ? '...' : 'Envoyer' }}
+            </button>
+          </div>
+          <div v-if="lastCreatedQR">
+            <img :src="lastCreatedQR" alt="QR code d’invitation" />
+          </div>
+          <p v-if="emailError" id="email-error" class="form-error">{{ emailError }}</p>
+        </div>
 
         <div class="card">
           <h3 class="sub-title">Lien d’invitation</h3>
@@ -463,7 +455,8 @@ async function refreshInvites() {
               <span>Nombre max d’utilisations</span>
               <input type="number" min="1" step="1" v-model.number="linkMaxUses" />
             </label>
-            <button class="btn" @click="createInviteLink">Générer</button>
+            <button class="btn" @click="createInviteLink">Générer lien</button>
+            <button class="btn" @click="createInviteQR">Générer QR</button>
           </div>
 
           <div v-if="lastCreatedLink" class="generated-link">
@@ -847,5 +840,38 @@ select {
 .danger-zone {
   display: flex;
   justify-content: flex-end;
+}
+.join-banner {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #4caf50;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  animation: fadeInOut 3s ease forwards;
+  z-index: 9999;
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  90% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
 }
 </style>

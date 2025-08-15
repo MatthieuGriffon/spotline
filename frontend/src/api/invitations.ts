@@ -207,3 +207,23 @@ export async function actDirectInvitation(
 
   return res.json()
 }
+
+export async function createQR(
+  groupId: string,
+  body: { expiresInDays: number; maxUses: number; format?: 'png' | 'svg' },
+): Promise<string> {
+  
+  const res = await fetch(`${BASE_API_URL}/groupes/${groupId}/invitations/qr`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) {
+    throw new Error(`Erreur lors de la génération du QR code : ${res.status}`)
+  }
+
+  // Le backend renvoie un base64 pur (string)
+  return await res.text()
+}

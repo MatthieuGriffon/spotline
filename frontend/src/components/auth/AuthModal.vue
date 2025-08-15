@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useAuthStore } from '@/stores/useAuthStore'
 import EmailSentModal from '@/components/auth/EmailSentModal.vue'
 import { useRouter, useRoute } from 'vue-router'
-
+import { checkPendingInvite } from '@/utils/checkPendingInvite' // ✅ nouvel import
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -22,29 +22,26 @@ const router = useRouter()
 const route = useRoute()
 
 const handleSubmit = async () => {
-  if (isRegistering.value) {
-    await authStore.register(email.value, pseudo.value, password.value)
-    if (authStore.successMessage?.includes('Vérifie ta boîte mail')) {
-      emit('close')
-      emit('email-sent')
-    }
-  } else {
+  if (!isRegistering.value) {
     await authStore.login(email.value, password.value)
-
     if (authStore.user) {
-      console.log('[DEBUG] Redirection, rôle =', authStore.user.role)
+      // Vérifie et accepte éventuellement une invitation
+      const joinedGroupId = await checkPendingInvite()
+
+      // Détermine la cible finale
+      let target: string
+      if (joinedGroupId) {
+        target = `/groupes/${joinedGroupId}`
+      } else {
+        const role = authStore.user.role.toLowerCase()
+        const fallback = role === 'admin' ? '/admin' : '/dashboard'
+        const q = (route.query.redirect as string | undefined) ?? ''
+        target = q && q.startsWith('/') ? q : fallback
+      }
+
+      // Redirection après que les stores aient été mis à jour
+      await router.replace(target)
       emit('close')
-
-      const role = authStore.user.role.toLowerCase()
-      const fallback = role === 'admin' ? '/admin' : '/dashboard'
-
-      // 1) on respecte ?redirect=... si présent
-      const q = (route.query.redirect as string | undefined) ?? ''
-      // 2) on ne fait confiance qu’aux chemins internes
-      const target = q && q.startsWith('/') ? q : fallback
-
-      // 3) on remplace l’historique (évite de revenir sur la modale)
-      router.replace(target)
     }
   }
 }
@@ -86,11 +83,11 @@ const handleSubmit = async () => {
         </p>
 
         <p
-  v-if="authStore.successMessage && !showEmailSentModal"
-  class="auth-success"
->
-  {{ authStore.successMessage }}
-</p>
+          v-if="authStore.successMessage && !showEmailSentModal"
+          class="auth-success"
+        >
+          {{ authStore.successMessage }}
+        </p>
 
         <p class="auth-switch">
           <span>{{ isRegistering ? 'Déjà un compte ?' : 'Pas encore inscrit ?' }}</span>

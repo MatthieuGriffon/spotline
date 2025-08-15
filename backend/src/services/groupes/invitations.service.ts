@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { randomBytes } from "crypto";
 import { addDays } from "date-fns";
 import { InvitationStatus as PrismaInvitationStatus } from "@prisma/client";
+import QRCode from "qrcode";
 
 /* =========================
  * Types internes service
@@ -244,7 +245,7 @@ export async function createLinkInvitation(
     },
   });
 
-  const url = `${process.env.APP_BASE_URL}/invite/${token}`;
+  const url = `${process.env.FRONTEND_URL}/invite/${token}`;
   return { token, url, expiresAt: expiresAt.toISOString(), maxUses };
 }
 
@@ -379,7 +380,7 @@ export async function listMyInvitations(
           PrismaInvitationStatus.ACCEPTED,
           PrismaInvitationStatus.DECLINED,
           PrismaInvitationStatus.EXPIRED,
-          PrismaInvitationStatus.REVOKED, 
+          PrismaInvitationStatus.REVOKED,
         ],
       }, // ✅ enum
     },
@@ -598,4 +599,52 @@ export async function actDirectInvitationForUser(
     });
     return { ok: true };
   }
+}
+
+export async function createLinkInvitationQR(
+  f: FastifyInstance,
+  p: {
+    groupId: string;
+    inviterId: string;
+    expiresInDays?: number;
+    maxUses?: number;
+    format?: "png" | "svg" | "base64";
+  }
+) {
+  console.log("FRONTEND_URL process.env =", process.env.FRONTEND_URL);
+
+  // 1) Créer le lien via ta fonction existante
+ const link = await createLinkInvitation(f, {
+   groupId: p.groupId,
+   inviterId: p.inviterId,
+   expiresInDays: p.expiresInDays,
+   maxUses: p.maxUses,
+ });
+
+ // On génère l’URL complète vers le frontend
+ const fullUrl = `${process.env.FRONTEND_URL}/invite/${link.token}`;
+
+ // Génération du QR code
+ const format = p.format ?? "png";
+ if (format === "png") {
+   const buffer = await QRCode.toBuffer(fullUrl, { type: "png", width: 300 });
+   return {
+     content: buffer.toString("base64"), // ⚠️ conversion en base64 pour le frontend
+     contentType: "image/png",
+     filename: `invite-${link.token}.png`,
+   };
+ }
+
+ if (format === "svg") {
+   const svg = await QRCode.toString(fullUrl, { type: "svg", width: 300 });
+   return {
+     content: svg,
+     contentType: "image/svg+xml",
+     filename: `invite-${link.token}.svg`,
+   };
+ }
+
+ const dataUrl = await QRCode.toDataURL(fullUrl, { width: 300 });
+ return { content: dataUrl, contentType: "application/json", filename: null };
+
 }

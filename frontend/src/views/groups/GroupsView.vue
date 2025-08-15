@@ -1,21 +1,37 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, onActivated, watch, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useGroupsStore } from '@/stores/useGroupsStore'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 const store = useGroupsStore()
+const { groups, isLoading, errorMessage, successMessage } = storeToRefs(store)
+
 const router = useRouter()
+const route = useRoute()
 
 const newName = ref('')
 const newDescription = ref('')
 
-// État modale de confirmation
 const showConfirm = ref(false)
 const targetGroupId = ref<string | null>(null)
 const targetGroupName = ref<string>('')
 
+// Charge la liste au premier montage
 onMounted(() => {
   store.loadGroups()
+})
+
+// Recharge si la page est réactivée (via <KeepAlive>)
+onActivated(() => {
+  store.loadGroups()
+})
+
+// Recharge si on navigue vers /groups
+watch(() => route.fullPath, (newPath) => {
+  if (newPath === '/groups') {
+    store.loadGroups()
+  }
 })
 
 async function handleCreate() {
@@ -53,7 +69,7 @@ function goToDetails(id: string) {
 <template>
   <div class="groups-wrapper">
     <!-- Skeleton -->
-    <div v-if="store.isLoading" class="skeleton">
+    <div v-if="isLoading" class="skeleton">
       <div class="skel skel-title"></div>
       <div class="skel skel-card" v-for="i in 4" :key="i"></div>
     </div>
@@ -65,14 +81,14 @@ function goToDetails(id: string) {
       </div>
 
       <!-- Status -->
-      <div v-if="store.errorMessage" class="status error">{{ store.errorMessage }}</div>
-      <div v-if="store.successMessage" class="status success">{{ store.successMessage }}</div>
+      <div v-if="errorMessage" class="status error">{{ errorMessage }}</div>
+      <div v-if="successMessage" class="status success">{{ successMessage }}</div>
 
       <!-- Liste -->
-      <section class="section-block" v-if="store.groups.length">
+      <section class="section-block" v-if="groups.length">
         <ul class="groups-list">
           <li
-            v-for="(group, index) in store.groups"
+            v-for="(group, index) in groups"
             :key="group.id"
             class="group-item"
             v-motion
@@ -94,7 +110,7 @@ function goToDetails(id: string) {
             <button
               @click.stop="askDelete(group.id, group.name)"
               class="delete-btn"
-              :disabled="store.isLoading"
+              :disabled="isLoading"
               aria-label="Supprimer le groupe"
               title="Supprimer"
             >
@@ -114,7 +130,7 @@ function goToDetails(id: string) {
         <h2 class="title">Créer un groupe</h2>
         <input v-model="newName" placeholder="Nom du groupe" />
         <textarea v-model="newDescription" placeholder="Description (optionnelle)"></textarea>
-        <button @click="handleCreate" :disabled="!newName.trim() || store.isLoading">Créer</button>
+        <button @click="handleCreate" :disabled="!newName.trim() || isLoading">Créer</button>
       </section>
     </div>
 
@@ -126,31 +142,17 @@ function goToDetails(id: string) {
         @click.self="cancelDeletion"
         @keydown.esc.prevent="cancelDeletion"
       >
-        <div
-          class="modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="confirm-title"
-        >
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
           <h3 id="confirm-title">Supprimer le groupe</h3>
           <p class="modal-text">
             Tu es sûr de vouloir supprimer <strong>{{ targetGroupName }}</strong> ?
             Cette action est irréversible.
           </p>
           <div class="modal-actions">
-            <button
-              class="btn btn-secondary"
-              @click="cancelDeletion"
-              :disabled="store.isLoading"
-              autofocus
-            >
+            <button class="btn btn-secondary" @click="cancelDeletion" :disabled="isLoading" autofocus>
               Annuler
             </button>
-            <button
-              class="btn btn-danger"
-              @click="confirmDeletion"
-              :disabled="store.isLoading"
-            >
+            <button class="btn btn-danger" @click="confirmDeletion" :disabled="isLoading">
               <font-awesome-icon :icon="['fas', 'trash']" />
               <span>Supprimer</span>
             </button>

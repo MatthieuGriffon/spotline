@@ -10,6 +10,7 @@ import {
   listGroupInvitations,
   revokeInvitation,
   actDirectInvitationForUser,
+  createLinkInvitationQR
 } from "@/services/groupes/invitations.service";
 
 import type {
@@ -19,6 +20,11 @@ import type {
   CreateLinkInvitationBodyType,
   AcceptOrDeclineBodyType,
 } from "@/schemas/group/invitations.schema";
+
+import type {
+  GenerateInvitationQRParamsType,
+  GenerateInvitationQRBodyType,
+} from "@/schemas/group/groupInvitationsQR.schema";
 
 // Petit helper pour l’API session get/set (évite les soucis de typings)
 function sessionAPI(req: FastifyRequest) {
@@ -190,4 +196,33 @@ export async function actDirectForMe(
     action,
   });
   return reply.send(result);
+}
+
+export async function createQR(
+  req: FastifyRequest<{
+    Params: GenerateInvitationQRParamsType;
+    Body: GenerateInvitationQRBodyType;
+  }>,
+  reply: FastifyReply
+) {
+  const { groupId } = req.params;
+  const { expiresInDays, maxUses, format } = req.body;
+  const user = req.session.user!; // requireAuth sur la route → safe
+
+  const { content, contentType, filename } = await createLinkInvitationQR(
+    req.server,
+    {
+      groupId,
+      inviterId: user.id,
+      expiresInDays,
+      maxUses,
+      format,
+    }
+  );
+
+  reply.header("Content-Type", contentType);
+  if (filename) {
+    reply.header("Content-Disposition", `inline; filename="${filename}"`);
+  }
+  reply.send(content);
 }

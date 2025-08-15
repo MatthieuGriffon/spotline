@@ -20,23 +20,20 @@ export const useAuthStore = defineStore('auth', () => {
   const errorMessage = ref<string | null>(null)
   const successMessage = ref<string | null>(null)
 
-  async function login(email: string, password: string) {
-    isLoading.value = true
-    errorMessage.value = null
-    successMessage.value = null
-
-    try {
-      const data = await loginUser(email, password)
-      await fetchMe()
-      console.debug('[DEBUG] user après login:', user.value)
-      successMessage.value = data.message || 'Connexion réussie'
-    } catch (err: unknown) {
-      errorMessage.value = err instanceof Error ? err.message : 'Erreur lors de la connexion'
-    } finally {
-      isLoading.value = false
-    }
+async function login(email: string, password: string): Promise<void> {
+  isLoading.value = true
+  errorMessage.value = null
+  successMessage.value = null
+  try {
+    const data = await loginUser(email, password)
+    await fetchMe()
+    successMessage.value = data.message || 'Connexion réussie'
+  } catch (err: unknown) {
+    errorMessage.value = err instanceof Error ? err.message : 'Erreur lors de la connexion'
+  } finally {
+    isLoading.value = false
   }
-
+}
   async function register(email: string, pseudo: string, password: string) {
     isLoading.value = true
     errorMessage.value = null
@@ -86,6 +83,12 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = newUser
   }
 
+
+
+
+
+
+
   return {
     user,
     isLoading,
@@ -97,4 +100,8 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     setUser,
   }
+  
 })
+
+
+

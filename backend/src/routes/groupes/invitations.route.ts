@@ -3,11 +3,16 @@ import type { TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import type { Static } from "@sinclair/typebox";
 import { Type } from "@sinclair/typebox";
 import { requireAuth } from "@/middlewares/requireAuth";
+import { createQR } from "@/controllers/groupes/invitations.controller";
 import * as C from "@/controllers/groupes/invitations.controller";
 import * as S from "@/schemas/group/invitations.schema";
 
 const ErrorResponse = Type.Object({ message: Type.String() });
 type App = FastifyInstance<any, any, any, any, TypeBoxTypeProvider>;
+import {
+  GenerateInvitationQRParams,
+  GenerateInvitationQRBody,
+} from "@/schemas/group/groupInvitationsQR.schema";
 
 export default async function groupInvitationsRoutes(app: App) {
   /* ========== A) Invitation directe (discriminée email | userId) ========== */
@@ -127,28 +132,58 @@ export default async function groupInvitationsRoutes(app: App) {
   const InvitationIdParams = Type.Object({ id: Type.String() });
   type InvitationIdParamsType = Static<typeof InvitationIdParams>;
 
-app.post<{
-  Params: InvitationIdParamsType;
-  Body: Static<typeof S.AcceptOrDeclineBody>;
-}>(
-  "/me/invitations/:id/act",
-  {
-    preHandler: [requireAuth],
-    schema: {
-      tags: ["Invitations"],
-      summary: "Accepter/Refuser une invitation directe (moi)",
-      params: InvitationIdParams,
-      body: S.AcceptOrDeclineBody,
-      response: {
-        200: Type.Object({ ok: Type.Boolean() }),
-        400: ErrorResponse,
-        401: ErrorResponse,
-        403: ErrorResponse,
-        404: ErrorResponse,
-        409: ErrorResponse,
+  app.post<{
+    Params: InvitationIdParamsType;
+    Body: Static<typeof S.AcceptOrDeclineBody>;
+  }>(
+    "/me/invitations/:id/act",
+    {
+      preHandler: [requireAuth],
+      schema: {
+        tags: ["Invitations"],
+        summary: "Accepter/Refuser une invitation directe (moi)",
+        params: InvitationIdParams,
+        body: S.AcceptOrDeclineBody,
+        response: {
+          200: Type.Object({ ok: Type.Boolean() }),
+          400: ErrorResponse,
+          401: ErrorResponse,
+          403: ErrorResponse,
+          404: ErrorResponse,
+          409: ErrorResponse,
+        },
       },
     },
-  },
-  C.actDirectForMe
-);
+    C.actDirectForMe
+  );
+  // Types dérivés des schémas
+  type GenerateInvitationQRParamsType = Static<
+    typeof GenerateInvitationQRParams
+  >;
+  type GenerateInvitationQRBodyType = Static<typeof GenerateInvitationQRBody>;
+
+  // POST /groups/:groupId/invitations/qr
+  app.post<{
+    Params: GenerateInvitationQRParamsType;
+    Body: GenerateInvitationQRBodyType;
+  }>(
+    "/:groupId/invitations/qr",
+    {
+      preHandler: [requireAuth],
+      schema: {
+        tags: ["Invitations"],
+        summary: "Générer un QR code pour une invitation de groupe",
+        params: GenerateInvitationQRParams,
+        body: GenerateInvitationQRBody,
+        response: {
+          200: { description: "QR code PNG/SVG/Base64", type: "string" },
+          400: ErrorResponse,
+          401: ErrorResponse,
+          403: ErrorResponse,
+          404: ErrorResponse,
+        },
+      },
+    },
+    C.createQR
+  );
 }

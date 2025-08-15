@@ -8,7 +8,8 @@ import {
   listMyInvitations,
   listGroupInvitations,
   revokeInvitation,
-  actDirectInvitation
+  actDirectInvitation,
+  createQR as apiCreateQR,
 } from '@/api/invitations'
 import type {
   CreateDirectInvitationBody,
@@ -18,7 +19,7 @@ import type {
   GroupInvitationAdminItem,
   ActOnInviteResult,
 } from '@/types/invitations'
-import { isNeedsAuth } from '@/types/invitations' // 👈 centralisé
+import { isNeedsAuth } from '@/types/invitations'
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message
@@ -31,6 +32,7 @@ function getErrorMessage(err: unknown): string {
 }
 
 export const useInvitationsStore = defineStore('invitations', () => {
+  // --- state ---
   const isLoading = ref(false)
   const errorMessage = ref<string | null>(null)
   const successMessage = ref<string | null>(null)
@@ -39,6 +41,7 @@ export const useInvitationsStore = defineStore('invitations', () => {
   const groupInvitations = ref<Record<string, GroupInvitationAdminItem[]>>({})
   const preview = ref<InvitationPreviewResponse | null>(null)
 
+  // --- setters ---
   function setLoading(v: boolean) {
     isLoading.value = v
   }
@@ -49,36 +52,44 @@ export const useInvitationsStore = defineStore('invitations', () => {
     successMessage.value = msg
   }
 
-  async function sendDirect(groupId: string, body: CreateDirectInvitationBody) {
+  // --- helper pour DRY ---
+  async function wrapAsync<T>(
+    fn: () => Promise<T>,
+    { successMsg }: { successMsg?: string } = {},
+  ): Promise<T> {
     setLoading(true)
     setError(null)
     setSuccess(null)
     try {
-      const res = await createDirectInvitation(groupId, body)
-      setSuccess(body.joinAuto ? 'Membre ajouté au groupe' : 'Invitation envoyée')
+      const res = await fn()
+      if (successMsg) setSuccess(successMsg)
       return res
-    } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Erreur lors de la création de l’invitation')
+    } catch (err) {
+      setError(getErrorMessage(err))
       throw err
     } finally {
       setLoading(false)
     }
   }
 
+  // --- Actions ---
+  async function sendDirect(groupId: string, body: CreateDirectInvitationBody) {
+    return wrapAsync(() => createDirectInvitation(groupId, body), {
+      successMsg: body.joinAuto ? 'Membre ajouté au groupe' : 'Invitation envoyée',
+    })
+  }
+
   async function createLink(groupId: string, body: CreateLinkInvitationBody) {
-    setLoading(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      const res = await createLinkInvitation(groupId, body)
-      setSuccess('Lien d’invitation créé')
-      return res
-    } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Erreur lors de la création du lien')
-      throw err
-    } finally {
-      setLoading(false)
-    }
+    return wrapAsync(() => createLinkInvitation(groupId, body), {
+      successMsg: 'Lien d’invitation créé',
+    })
+  }
+
+  async function createQR(
+    groupId: string,
+    body: { expiresInDays: number; maxUses: number; format?: 'png' | 'svg' },
+  ): Promise<string> {
+    return wrapAsync(() => apiCreateQR(groupId, body), { successMsg: 'QR code généré' })
   }
 
   async function loadPreview(token: string) {
@@ -86,8 +97,8 @@ export const useInvitationsStore = defineStore('invitations', () => {
     setError(null)
     try {
       preview.value = await previewInvitation(token)
-    } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Erreur lors du chargement de l’invitation')
+    } catch (err) {
+      setError(getErrorMessage(err))
       preview.value = null
     } finally {
       setLoading(false)
@@ -95,112 +106,81 @@ export const useInvitationsStore = defineStore('invitations', () => {
   }
 
   async function act(token: string, action: 'accept' | 'decline'): Promise<ActOnInviteResult> {
-    setLoading(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      const res = await actOnInvite(token, { action }) // -> ActOnInviteResult
+    return wrapAsync(async () => {
+      const res = await actOnInvite(token, { action })
       if (isNeedsAuth(res)) return res
       setSuccess(action === 'accept' ? 'Invitation acceptée' : 'Invitation refusée')
       return res
-    } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Erreur lors de l’action sur l’invitation')
-      throw err
-    } finally {
-      setLoading(false)
-    }
+    })
   }
 
   async function loadMine() {
-    setLoading(true)
-    setError(null)
-    try {
+    return wrapAsync(async () => {
       const res = await listMyInvitations()
-      console.debug('[store] loadMine ->', res)
       myInvitations.value = res.invitations
-    } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Erreur lors du chargement des invitations')
-    } finally {
-      setLoading(false)
-    }
+      return res
+    })
   }
 
   async function loadForGroup(groupId: string) {
-    setLoading(true)
-    setError(null)
-    try {
+    return wrapAsync(async () => {
       const res = await listGroupInvitations(groupId)
       groupInvitations.value[groupId] = res.invitations
-    } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Erreur lors du chargement des invitations du groupe')
-    } finally {
-      setLoading(false)
-    }
+      return res
+    })
   }
 
   async function revoke(groupId: string, invitationId: string) {
-    setLoading(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      await revokeInvitation(groupId, invitationId)
-      groupInvitations.value[groupId] = (groupInvitations.value[groupId] || []).map((i) =>
-        i.id === invitationId ? { ...i, status: 'REVOKED' } : i,
-      )
-      setSuccess('Invitation révoquée')
-    } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Erreur lors de la révocation')
-      throw err
-    } finally {
-      setLoading(false)
-    }
+    return wrapAsync(
+      async () => {
+        await revokeInvitation(groupId, invitationId)
+        groupInvitations.value[groupId] = (groupInvitations.value[groupId] || []).map((i) =>
+          i.id === invitationId ? { ...i, status: 'REVOKED' } : i,
+        )
+      },
+      { successMsg: 'Invitation révoquée' },
+    )
   }
 
   async function actDirect(invitationId: string, action: 'accept' | 'decline') {
-    setLoading(true)
-    setError(null)
-    setSuccess(null)
-    try {
-      await actDirectInvitation(invitationId, action)
-      setSuccess(action === 'accept' ? 'Invitation acceptée' : 'Invitation refusée')
-
-      // MAJ optimiste des listes admin déjà chargées
-      for (const [gid, list] of Object.entries(groupInvitations.value)) {
-        groupInvitations.value[gid] = (list || []).map((i) =>
-          i.id === invitationId
-            ? { ...i, status: action === 'accept' ? 'ACCEPTED' : 'DECLINED' }
-            : i,
-        )
-      }
-
-      // Rafraîchir la bannière “mes invitations”
-      await loadMine()
-      return { ok: true }
-    } catch (err: unknown) {
-      setError(getErrorMessage(err) || 'Erreur lors de l’action')
-      throw err
-    } finally {
-      setLoading(false)
-    }
+    return wrapAsync(
+      async () => {
+        await actDirectInvitation(invitationId, action)
+        // MAJ optimiste
+        for (const [gid, list] of Object.entries(groupInvitations.value)) {
+          groupInvitations.value[gid] = (list || []).map((i) =>
+            i.id === invitationId
+              ? { ...i, status: action === 'accept' ? 'ACCEPTED' : 'DECLINED' }
+              : i,
+          )
+        }
+        await loadMine()
+      },
+      { successMsg: action === 'accept' ? 'Invitation acceptée' : 'Invitation refusée' },
+    )
   }
 
   return {
+    // state
     isLoading,
     errorMessage,
     successMessage,
     myInvitations,
     groupInvitations,
     preview,
+    // setters
+    setError,
+    setSuccess,
+    setLoading,
+    // actions
     sendDirect,
     createLink,
+    createQR,
     loadPreview,
     act,
     loadMine,
     loadForGroup,
     revoke,
-    setError,
-    setSuccess,
     actDirect,
-    setLoading,
   }
 })
