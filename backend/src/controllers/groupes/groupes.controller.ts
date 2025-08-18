@@ -74,25 +74,28 @@ export const GroupController = {
     rep.code(201).send(gm);
   },
 
-  // 🔄 Changer le rôle d'un membre
-  async changeRole(
-    req: FastifyRequest<{
-      Params: typeof S.MemberParams.static;
-      Body: typeof S.ChangeRoleBody.static;
-    }>
-  ) {
-    const user = req.session.user;
-    if (!user) {
-      throw req.server.httpErrors.unauthorized("Non authentifié");
-    }
-    return changeRole(
-      req.server,
-      user.id,
-      req.params.id,
-      req.params.userId,
-      req.body.role
-    );
-  },
+ // 🔄 Changer le rôle d'un membre
+async changeRole(
+  req: FastifyRequest<{
+    Params: typeof S.MemberParams.static;
+    Body: typeof S.ChangeRoleBody.static;
+  }>
+) {
+  const user = req.session.user;
+  if (!user) {
+    throw req.server.httpErrors.unauthorized("Non authentifié");
+  }
+
+  await changeRole(
+    req.server,
+    user.id,
+    req.params.id,
+    req.params.userId,
+    req.body.role
+  );
+
+  return { ok: true }; // ✅ conforme à S.SuccessResponse
+},
 
   // ❌ Retirer un membre
   async removeMember(
