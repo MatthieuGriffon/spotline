@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useGroupsStore } from '@/stores/useGroupsStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useInvitationsStore } from '@/stores/invitationsStore'
-import { useBannerStore } from '@/stores/bannerStore' 
+import { useBannerStore } from '@/stores/bannerStore'
 import type { GroupInvitationAdminItem } from '@/types/invitations'
 
 const route = useRoute()
@@ -13,8 +13,8 @@ const router = useRouter()
 const groups = useGroupsStore()
 const auth = useAuthStore()
 const invitations = useInvitationsStore()
-const bannerStore = useBannerStore() 
-
+const bannerStore = useBannerStore()
+const showLeaveConfirm = ref(false)
 let redirectedNotFound = false
 
 /** ====== Routing / Id ====== */
@@ -54,10 +54,7 @@ onMounted(async () => {
   await loadGroup()
 
   // ✅ Si on vient de rejoindre ce groupe, recharger la liste globale
-  if (
-    bannerStore.recentJoin &&
-    bannerStore.recentJoin.groupName === groups.currentGroup?.name
-  ) {
+  if (bannerStore.recentJoin && bannerStore.recentJoin.groupName === groups.currentGroup?.name) {
     await groups.loadGroups()
   }
 })
@@ -182,16 +179,27 @@ async function removeMember(userId: string) {
   }
 }
 
-async function leave() {
+function leave() {
   if (!current.value) return
   if (isSoleAdmin.value) {
+    // Pour ce cas particulier, on peut encore garder une alerte,
+    // ou bien afficher une modale dédiée "Tu es le dernier admin..."
     alert("Tu es le dernier admin. Transfère d'abord l'admin à quelqu'un d'autre.")
     return
   }
-  if (confirm('Quitter ce groupe ?')) {
-    await groups.leaveGroupAction(current.value.id)
-    router.push('/groupes')
-  }
+  // 👉 Au lieu de confirm(), on déclenche la modale
+  showLeaveConfirm.value = true
+}
+
+async function confirmLeave() {
+  if (!current.value) return
+  await groups.leaveGroupAction(current.value.id)
+  router.push('/groupes')
+  showLeaveConfirm.value = false
+}
+
+function cancelLeave() {
+  showLeaveConfirm.value = false
 }
 
 function goBack() {
@@ -207,9 +215,7 @@ function validateEmail() {
     emailError.value = 'Adresse e-mail requise'
     return
   }
-  emailError.value = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-    ? null
-    : 'Adresse e-mail invalide'
+  emailError.value = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? null : 'Adresse e-mail invalide'
 }
 watch(directEmail, validateEmail)
 
@@ -232,12 +238,22 @@ async function sendDirectInviteByEmail() {
 
 const linkExpiresInDays = ref<number | undefined>(7)
 const linkMaxUses = ref<number | undefined>(5)
-const lastCreatedLink = ref<null | { token: string; url: string; expiresAt: string; maxUses: number }>(null)
+const lastCreatedLink = ref<null | {
+  token: string
+  url: string
+  expiresAt: string
+  maxUses: number
+}>(null)
 async function createInviteLink() {
   if (!current.value) return
-  const expires = Number.isFinite(linkExpiresInDays.value ?? NaN) ? linkExpiresInDays.value : undefined
+  const expires = Number.isFinite(linkExpiresInDays.value ?? NaN)
+    ? linkExpiresInDays.value
+    : undefined
   const max = Number.isFinite(linkMaxUses.value ?? NaN) ? linkMaxUses.value : undefined
-  const result = await invitations.createLink(current.value.id, { expiresInDays: expires, maxUses: max })
+  const result = await invitations.createLink(current.value.id, {
+    expiresInDays: expires,
+    maxUses: max,
+  })
   lastCreatedLink.value = result
   await invitations.loadForGroup(groupId.value)
 }
@@ -282,19 +298,23 @@ async function createInviteQR() {
   if (!gid) return
   const expires = Number.isFinite(linkExpiresInDays.value ?? NaN) ? linkExpiresInDays.value! : 7
   const max = Number.isFinite(linkMaxUses.value ?? NaN) ? linkMaxUses.value! : 10
-  const qr = await invitations.createQR(gid, { expiresInDays: expires, maxUses: max, format: 'png' })
+  const qr = await invitations.createQR(gid, {
+    expiresInDays: expires,
+    maxUses: max,
+    format: 'png',
+  })
   lastCreatedQR.value = `data:image/png;base64,${qr}`
 }
 </script>
 
 <template>
   <div class="group-detail-wrapper">
-   <div
-    v-if="bannerStore.recentJoin && bannerStore.recentJoin.groupName === current?.name"
-    class="join-banner"
-  >
-     Tu as rejoint le groupe {{ bannerStore.recentJoin.groupName }} !
-  </div>
+    <div
+      v-if="bannerStore.recentJoin && bannerStore.recentJoin.groupName === current?.name"
+      class="join-banner"
+    >
+      Tu as rejoint le groupe {{ bannerStore.recentJoin.groupName }} !
+    </div>
 
     <!-- Skeleton -->
     <div v-if="isLoading" class="skeleton">
@@ -548,6 +568,20 @@ async function createInviteQR() {
       <section class="section-block danger-zone">
         <button class="btn danger" @click="leave">Quitter le groupe</button>
       </section>
+
+      <!-- Modale confirmation -->
+      <transition name="fade">
+        <div v-if="showLeaveConfirm" class="modal-backdrop" @click.self="cancelLeave">
+          <div class="modal" role="dialog" aria-modal="true">
+            <h3>Quitter le groupe</h3>
+            <p class="modal-text">Es-tu sûr de vouloir quitter ce groupe ?</p>
+            <div class="modal-actions">
+              <button class="btn" @click="cancelLeave">Annuler</button>
+              <button class="btn danger" @click="confirmLeave">Confirmer</button>
+            </div>
+          </div>
+        </div>
+      </transition>
     </div>
   </div>
 </template>
@@ -873,5 +907,32 @@ select {
     opacity: 0;
     transform: translate(-50%, -20px);
   }
+}
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.5);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+  padding: 1rem;
+}
+
+.modal {
+  width: 100%;
+  max-width: 400px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow:
+    0 10px 15px -3px rgba(0,0,0,.1),
+    0 4px 6px -4px rgba(0,0,0,.1);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 </style>
