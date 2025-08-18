@@ -177,3 +177,10 @@ export const GroupInvitationsAdminResponse = Type.Object(
 export type GroupInvitationsAdminResponseType = Static<
   typeof GroupInvitationsAdminResponse
 >;
+export const ActOnInviteResponse = Type.Object(
+  {
+    ok: Type.Boolean(),
+  },
+  { additionalProperties: true }
+);
+export type ActOnInviteResponseType = Static<typeof ActOnInviteResponse>;

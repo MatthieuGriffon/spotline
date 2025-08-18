@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useGroupsStore } from '@/stores/useGroupsStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useInvitationsStore } from '@/stores/invitationsStore'
-import { useBannerStore } from '@/stores/bannerStore' // ✅ ajouté
+import { useBannerStore } from '@/stores/bannerStore' 
 import type { GroupInvitationAdminItem } from '@/types/invitations'
 
 const route = useRoute()

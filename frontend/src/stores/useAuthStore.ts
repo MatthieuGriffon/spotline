@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref} from 'vue'
 import { loginUser, registerUser, logoutUser } from '@/api/auth'
 import { getUserMe } from '@/api/user'
+import router from '@/router'
 
 export interface User {
   id: string
@@ -28,6 +29,12 @@ async function login(email: string, password: string): Promise<void> {
     const data = await loginUser(email, password)
     await fetchMe()
     successMessage.value = data.message || 'Connexion réussie'
+    const redirect = router.currentRoute.value.query.redirect as string | undefined
+    if (redirect && redirect.startsWith('/')) {
+      router.replace(redirect)
+    } else {
+      router.replace('/dashboard')
+    }
   } catch (err: unknown) {
     errorMessage.value = err instanceof Error ? err.message : 'Erreur lors de la connexion'
   } finally {

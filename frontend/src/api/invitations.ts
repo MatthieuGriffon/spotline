@@ -1,5 +1,8 @@
 // src/api/invitations.ts
 import { BASE_API_URL } from '@/api/config'
+import { useBannerStore } from '@/stores/bannerStore'
+
+
 import type {
   CreateDirectInvitationBody,
   CreateDirectInvitationResponse,
@@ -11,6 +14,7 @@ import type {
   NeedsAuthResponse,
   MyInvitesResponse,
   GroupInvitationAdminItem,
+  ActDirectInvitationResult,
 } from '@/types/invitations'
 
 // Utils d’erreur homogènes
@@ -95,8 +99,6 @@ export async function actOnInvite(
   token: string,
   body: ActOnInviteBody,
 ): Promise<ActOnInviteResult> {
-  console.debug('[DEBUG] POST /invite/:token', { token, body })
-
   const res = await fetch(`${BASE_API_URL}/invite/${encodeURIComponent(token)}`, {
     method: 'POST',
     credentials: 'include',
@@ -104,8 +106,8 @@ export async function actOnInvite(
     body: JSON.stringify(body),
   })
 
-  const isJson = res.headers.get('content-type')?.includes('application/json')
-  const payload = isJson ? await res.json() : null
+  const payload = await res.json().catch(() => null)
+  console.debug('[DEBUG FRONT actOnInvite] payload brut renvoyé par le backend:', payload)
 
   if (!res.ok) {
     if (res.status === 401 && payload?.needsAuth) {
@@ -113,6 +115,13 @@ export async function actOnInvite(
     }
     const message = payload?.message || res.statusText
     throw new Error(message || 'Erreur lors de l’action sur l’invitation')
+  }
+
+  // 🎉 Déclenche la bannière côté front si l’action est "accept"
+  if (body.action === 'accept' && payload?.ok) {
+    const bannerStore = useBannerStore()
+    bannerStore.setRecentJoin(payload.groupName || 'un groupe')
+    setTimeout(() => bannerStore.clearRecentJoin(), 3000)
   }
 
   return payload as ActOnInviteResult
@@ -187,7 +196,7 @@ export async function revokeInvitation(
 export async function actDirectInvitation(
   invitationId: string,
   action: 'accept' | 'decline',
-): Promise<{ ok: boolean }> {
+): Promise<ActDirectInvitationResult> {
   console.debug('[DEBUG] POST /groupes/me/invitations/:id/act', { invitationId, action })
 
   const res = await fetch(
@@ -204,15 +213,15 @@ export async function actDirectInvitation(
     const error = await parseError(res)
     throw new Error(error.message || 'Erreur lors de l’action sur l’invitation')
   }
-
-  return res.json()
+  const data = await res.json()
+  console.debug('[Réponse JSON actDirectInvitation]:', data)
+  return data
 }
 
 export async function createQR(
   groupId: string,
   body: { expiresInDays: number; maxUses: number; format?: 'png' | 'svg' },
 ): Promise<string> {
-  
   const res = await fetch(`${BASE_API_URL}/groupes/${groupId}/invitations/qr`, {
     method: 'POST',
     credentials: 'include',

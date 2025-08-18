@@ -5,6 +5,7 @@ import AppFooter from '@/components/layout/AppFooter.vue'
 import AuthModal from '@/components/auth/AuthModal.vue'
 import EmailSentModal from '@/components/auth/EmailSentModal.vue'
 import EmailConfirmModal from '@/components/ui/EmailConfirmModal.vue'
+import BannerInvitation from '@/components/ui/BannerInvitations.vue'
 
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -65,7 +66,7 @@ function handleConfirmClose() {
 <template>
   <div class="layout">
     <AppHeader @auth-requested="showAuthModal = true" />
-   
+    <BannerInvitation />
     <main class="layout-content">
         
       <router-view />

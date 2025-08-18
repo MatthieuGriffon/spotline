@@ -3,6 +3,7 @@ import { onMounted, onActivated, watch, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useGroupsStore } from '@/stores/useGroupsStore'
 import { useRouter, useRoute } from 'vue-router'
+import { useBannerStore } from '@/stores/bannerStore'
 
 const store = useGroupsStore()
 const { groups, isLoading, errorMessage, successMessage } = storeToRefs(store)
@@ -16,6 +17,7 @@ const newDescription = ref('')
 const showConfirm = ref(false)
 const targetGroupId = ref<string | null>(null)
 const targetGroupName = ref<string>('')
+const bannerStore = useBannerStore()
 
 // Charge la liste au premier montage
 onMounted(() => {
@@ -28,11 +30,14 @@ onActivated(() => {
 })
 
 // Recharge si on navigue vers /groups
-watch(() => route.fullPath, (newPath) => {
-  if (newPath === '/groups') {
-    store.loadGroups()
-  }
-})
+watch(
+  () => route.fullPath,
+  (newPath) => {
+    if (newPath === '/groups') {
+      store.loadGroups()
+    }
+  },
+)
 
 async function handleCreate() {
   if (!newName.value.trim()) return
@@ -83,7 +88,9 @@ function goToDetails(id: string) {
       <!-- Status -->
       <div v-if="errorMessage" class="status error">{{ errorMessage }}</div>
       <div v-if="successMessage" class="status success">{{ successMessage }}</div>
-
+      <div v-if="bannerStore.recentJoin" class="join-banner">
+        Tu as rejoint <strong>{{ bannerStore.recentJoin.groupName }}</strong>
+      </div>
       <!-- Liste -->
       <section class="section-block" v-if="groups.length">
         <ul class="groups-list">
@@ -93,7 +100,12 @@ function goToDetails(id: string) {
             class="group-item"
             v-motion
             :initial="{ opacity: 0, y: 12, scale: 0.98 }"
-            :enter="{ opacity: 1, y: 0, scale: 1, transition: { delay: index * 60, duration: 300 } }"
+            :enter="{
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              transition: { delay: index * 60, duration: 300 },
+            }"
           >
             <button
               class="group-info"
@@ -103,7 +115,8 @@ function goToDetails(id: string) {
               <h2 class="group-name">{{ group.name }}</h2>
               <p v-if="group.description" class="description">{{ group.description }}</p>
               <small class="meta">
-                {{ group.memberCount }} membre{{ group.memberCount > 1 ? 's' : '' }} • Rôle : {{ group.role }}
+                {{ group.memberCount }} membre{{ group.memberCount > 1 ? 's' : '' }} • Rôle :
+                {{ group.role }}
               </small>
             </button>
 
@@ -145,11 +158,16 @@ function goToDetails(id: string) {
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
           <h3 id="confirm-title">Supprimer le groupe</h3>
           <p class="modal-text">
-            Tu es sûr de vouloir supprimer <strong>{{ targetGroupName }}</strong> ?
-            Cette action est irréversible.
+            Tu es sûr de vouloir supprimer <strong>{{ targetGroupName }}</strong> ? Cette action est
+            irréversible.
           </p>
           <div class="modal-actions">
-            <button class="btn btn-secondary" @click="cancelDeletion" :disabled="isLoading" autofocus>
+            <button
+              class="btn btn-secondary"
+              @click="cancelDeletion"
+              :disabled="isLoading"
+              autofocus
+            >
               Annuler
             </button>
             <button class="btn btn-danger" @click="confirmDeletion" :disabled="isLoading">
@@ -192,12 +210,18 @@ function goToDetails(id: string) {
   font-style: italic;
   color: #666;
   margin: 0.75rem 0;
-  &.error { color: red; }
-  &.success { color: #0d9488; }
+  &.error {
+    color: red;
+  }
+  &.success {
+    color: #0d9488;
+  }
 }
 
 /* Section */
-.section-block { margin-bottom: 1.25rem; }
+.section-block {
+  margin-bottom: 1.25rem;
+}
 
 /* Liste de groupes */
 .groups-list {
@@ -214,10 +238,16 @@ function goToDetails(id: string) {
   background: #f1f5f9;
   border-radius: 12px;
   padding: 0.75rem;
-  transition: background 0.2s ease, transform 0.06s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.06s ease;
 
-  &:hover { background: #e2e8f0; }
-  &:active { transform: scale(0.995); }
+  &:hover {
+    background: #e2e8f0;
+  }
+  &:active {
+    transform: scale(0.995);
+  }
 }
 .group-info {
   display: block;
@@ -256,8 +286,13 @@ function goToDetails(id: string) {
   align-items: center;
   justify-content: center;
 
-  &:hover { color: #a00; }
-  &:disabled { color: #999; cursor: not-allowed; }
+  &:hover {
+    color: #a00;
+  }
+  &:disabled {
+    color: #999;
+    cursor: not-allowed;
+  }
 }
 
 /* Création */
@@ -274,7 +309,8 @@ function goToDetails(id: string) {
   flex-direction: column;
   gap: 0.5rem;
 
-  input, textarea {
+  input,
+  textarea {
     padding: 0.6rem;
     border-radius: 8px;
     border: 1px solid #e5e7eb;
@@ -292,8 +328,13 @@ function goToDetails(id: string) {
     cursor: pointer;
     transition: filter 0.15s ease;
 
-    &:hover { filter: brightness(0.95); }
-    &:disabled { background: #94a3b8; cursor: not-allowed; }
+    &:hover {
+      filter: brightness(0.95);
+    }
+    &:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
   }
 }
 
@@ -306,8 +347,14 @@ function goToDetails(id: string) {
 }
 
 /* Modale */
-.fade-enter-active, .fade-leave-active { transition: opacity .15s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 
 .modal-backdrop {
   position: fixed;
@@ -325,11 +372,11 @@ function goToDetails(id: string) {
   border-radius: 12px;
   padding: 1rem;
   box-shadow:
-    0 10px 15px -3px rgba(0,0,0,.1),
-    0 4px 6px -4px rgba(0,0,0,.1);
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1);
 }
 .modal h3 {
-  margin: 0 0 .5rem;
+  margin: 0 0 0.5rem;
   color: #111827;
   font-size: 1.1rem;
   font-weight: 700;
@@ -341,17 +388,17 @@ function goToDetails(id: string) {
 }
 .modal-actions {
   display: flex;
-  gap: .5rem;
+  gap: 0.5rem;
   justify-content: flex-end;
 }
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: .4rem;
-  padding: .55rem .9rem;
+  gap: 0.4rem;
+  padding: 0.55rem 0.9rem;
   border-radius: 10px;
   border: none;
-  font-size: .95rem;
+  font-size: 0.95rem;
   cursor: pointer;
 }
 .btn-secondary {
@@ -371,18 +418,41 @@ function goToDetails(id: string) {
     border-radius: 8px;
     animation: shimmer 1.4s ease infinite;
   }
-  .skel-title { height: 24px; width: 40%; margin: 1rem 0; }
-  .skel-card { height: 64px; margin: 0.5rem 0; }
+  .skel-title {
+    height: 24px;
+    width: 40%;
+    margin: 1rem 0;
+  }
+  .skel-card {
+    height: 64px;
+    margin: 0.5rem 0;
+  }
 }
 @keyframes shimmer {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 /* Mobile */
 @media (max-width: 400px) {
-  .delete-btn { align-self: flex-start; }
-  .create-form button { width: 100%; }
+  .delete-btn {
+    align-self: flex-start;
+  }
+  .create-form button {
+    width: 100%;
+  }
+}
+.join-banner {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  margin: 0.75rem 0;
+  font-weight: 500;
 }
 </style>
-

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useBannerStore } from '@/stores/bannerStore'
 import {
   createDirectInvitation,
   createLinkInvitation,
@@ -105,14 +106,31 @@ export const useInvitationsStore = defineStore('invitations', () => {
     }
   }
 
-  async function act(token: string, action: 'accept' | 'decline'): Promise<ActOnInviteResult> {
-    return wrapAsync(async () => {
-      const res = await actOnInvite(token, { action })
-      if (isNeedsAuth(res)) return res
-      setSuccess(action === 'accept' ? 'Invitation acceptée' : 'Invitation refusée')
+async function act(token: string, action: 'accept' | 'decline'): Promise<ActOnInviteResult> {
+  return wrapAsync(async () => {
+    const res = await actOnInvite(token, { action })
+
+    // 🔒 Cas "non connecté"
+    if (isNeedsAuth(res)) {
       return res
-    })
-  }
+    }
+
+    if (action === 'accept') {
+      setSuccess('Invitation acceptée')
+
+      // 🟢 Ici TS sait que res est un ActOnInviteResponse
+      if (res.ok && res.groupName) {
+        const bannerStore = useBannerStore()
+        bannerStore.setRecentJoin(res.groupName)
+        console.log('[act] setRecentJoin avec', res.groupName)
+      }
+    } else {
+      setSuccess('Invitation refusée')
+    }
+
+    return res
+  })
+}
 
   async function loadMine() {
     return wrapAsync(async () => {
@@ -142,24 +160,32 @@ export const useInvitationsStore = defineStore('invitations', () => {
     )
   }
 
-  async function actDirect(invitationId: string, action: 'accept' | 'decline') {
-    return wrapAsync(
-      async () => {
-        await actDirectInvitation(invitationId, action)
-        // MAJ optimiste
-        for (const [gid, list] of Object.entries(groupInvitations.value)) {
-          groupInvitations.value[gid] = (list || []).map((i) =>
-            i.id === invitationId
-              ? { ...i, status: action === 'accept' ? 'ACCEPTED' : 'DECLINED' }
-              : i,
-          )
-        }
-        await loadMine()
-      },
-      { successMsg: action === 'accept' ? 'Invitation acceptée' : 'Invitation refusée' },
-    )
-  }
+ async function actDirect(invitationId: string, action: 'accept' | 'decline') {
+   return wrapAsync(
+     async () => {
+       const result = await actDirectInvitation(invitationId, action)
+       console.debug('[FRONT actDirect] API result:', result)
 
+       if (action === 'accept' && result?.ok && result.groupName) {
+         const bannerStore = useBannerStore()
+         bannerStore.setRecentJoin(result.groupName)
+       }
+
+       // MAJ optimiste
+       for (const [gid, list] of Object.entries(groupInvitations.value)) {
+         groupInvitations.value[gid] = (list || []).map((i) =>
+           i.id === invitationId
+             ? { ...i, status: action === 'accept' ? 'ACCEPTED' : 'DECLINED' }
+             : i,
+         )
+       }
+       await loadMine()
+
+       return result
+     },
+     { successMsg: action === 'accept' ? 'Invitation acceptée' : 'Invitation refusée' },
+   )
+ }
   return {
     // state
     isLoading,

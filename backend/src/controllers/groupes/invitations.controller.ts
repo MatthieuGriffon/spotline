@@ -4,13 +4,12 @@ import {
   createDirectInvitation,
   createLinkInvitation,
   previewLinkInvitation,
-  acceptInvitation,
-  declineInvitation,
+  consumeLinkInvitationForUser,
   listMyInvitations,
   listGroupInvitations,
   revokeInvitation,
   actDirectInvitationForUser,
-  createLinkInvitationQR
+  createLinkInvitationQR,
 } from "@/services/groupes/invitations.service";
 
 import type {
@@ -116,17 +115,33 @@ export async function actOnInvite(
   const user = session.get<SessionUser>("user");
 
   if (!user) {
-    session.set("pendingInvite", { token, action } as {
-      token: string;
-      action: "accept" | "decline";
-    });
+    session.set("pendingInvite", { token, action });
     return reply.code(401).send({ needsAuth: true });
   }
 
-  const svc = action === "accept" ? acceptInvitation : declineInvitation;
-  const result = await svc(req.server, { token, userId: user.id });
-  return reply.send(result);
+  const result = await consumeLinkInvitationForUser(req.server, {
+    token,
+    userId: user.id,
+    action,
+  });
+  req.server.log.info(
+    result,
+    "[BACK actOnInvite] result RAW de consumeLinkInvitationForUser"
+  );
+
+  // 🟢 Ajout ici : récupérer le groupName si acceptation
+if (result.ok && result.groupId) {
+  const group = await req.server.prisma.group.findUnique({
+    where: { id: result.groupId },
+    select: { name: true },
+  })
+  if (group) {
+    result.groupName = group.name
+  }
 }
+  return reply.send(result)
+
+ }
 
 /* ========== A) Liste des invitations reçues (bannière dashboard) ========== */
 export async function listMine(req: FastifyRequest, reply: FastifyReply) {
@@ -179,7 +194,6 @@ export async function revoke(
   });
   return reply.send(result);
 }
-
 export async function actDirectForMe(
   req: FastifyRequest<{
     Params: { id: string };
@@ -190,11 +204,15 @@ export async function actDirectForMe(
   const user = req.session.user!;
   const { id } = req.params;
   const { action } = req.body;
+
   const result = await actDirectInvitationForUser(req.server, {
     invitationId: id,
     userId: user.id,
     action,
   });
+
+  req.server.log.info({ result }, "[actDirectForMe] result before send");
+
   return reply.send(result);
 }
 
@@ -226,3 +244,5 @@ export async function createQR(
   }
   reply.send(content);
 }
+
+

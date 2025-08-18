@@ -1,7 +1,8 @@
-import { previewInvitation, actOnInvite } from '@/api/invitations'
+import { actOnInvite } from '@/api/invitations'
 import { useGroupsStore } from '@/stores/useGroupsStore'
 import { useInvitationsStore } from '@/stores/invitationsStore'
 import { useBannerStore } from '@/stores/bannerStore'
+import type { ActOnInviteResult } from '@/types/invitations'
 
 export async function checkPendingInvite(tokenFromUrl?: string): Promise<string | null> {
   let token = tokenFromUrl
@@ -27,34 +28,40 @@ export async function checkPendingInvite(tokenFromUrl?: string): Promise<string 
   }
 
   try {
-    let groupId: string | null = null
-    let groupName = ''
+    const result: ActOnInviteResult = await actOnInvite(token, { action: 'accept' })
 
-    try {
-      const preview = await previewInvitation(token)
-      groupName = preview.group?.name || ''
-      groupId = preview.group?.id || null
-    } catch (e) {
-      console.warn('[checkPendingInvite] Impossible de récupérer le nom du groupe', e)
+    // Cas "besoin d’authentification"
+    if ('needsAuth' in result && result.needsAuth) {
+      console.warn('[checkPendingInvite] Invitation nécessite une connexion')
+      return null
     }
 
-    await actOnInvite(token, { action: 'accept' })
-
-    const groupsStore = useGroupsStore()
-    const invitationsStore = useInvitationsStore()
-    await Promise.all([groupsStore.loadGroups(), invitationsStore.loadMine()])
-
-    if (groupName) {
-      const bannerStore = useBannerStore()
-      bannerStore.setRecentJoin(groupName)
+    // Cas "refusé ou invalide"
+    if ('ok' in result && !result.ok) {
+      console.warn('[checkPendingInvite] Invitation invalide ou déjà utilisée')
+      return null
     }
 
-    return groupId
+    // Cas accepté
+    if ('ok' in result && result.ok) {
+      const groupsStore = useGroupsStore()
+      const invitationsStore = useInvitationsStore()
+      await Promise.all([groupsStore.loadGroups(), invitationsStore.loadMine()])
+
+      if (result.groupName) {
+        console.log('[checkPendingInvite] setRecentJoin avec', result.groupName)
+        const bannerStore = useBannerStore()
+        bannerStore.setRecentJoin(result.groupName)
+      }
+
+      return result.groupId ?? null
+    }
+
+    return null
   } catch (err) {
     console.error('[checkPendingInvite] Erreur', err)
     return null
   } finally {
-    // On nettoie seulement si ça vient du localStorage
     if (!tokenFromUrl) {
       localStorage.removeItem('pendingInvite')
     }

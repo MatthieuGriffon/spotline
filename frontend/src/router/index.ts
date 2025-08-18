@@ -2,7 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { checkPendingInvite } from '@/utils/checkPendingInvite'
-
+import { useInvitationsStore } from '@/stores/invitationsStore'
+import { useBannerStore } from '@/stores/bannerStore'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -125,14 +126,22 @@ const router = createRouter({
     },
     {
       path: '/invite/:token',
-      name: 'invite',
+      name: 'InviteLink',
       component: () => import('@/views/inviteView/InviteView.vue'),
+    },
+    {
+      path: '/invitation/:id',
+      name: 'invitation-accept',
+      component: () => import('@/views/inviteView/InviteView.vue'),
+      meta: { requiresAuth: true },
     },
   ],
 })
 
 router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
+  const invitationsStore = useInvitationsStore()
+  const bannerStore = useBannerStore()
 
   // 1️⃣ Hydrate user si pas encore fait
   if (!auth.user) {
@@ -148,52 +157,109 @@ router.beforeEach(async (to, from, next) => {
   const requiredRole = String(to.meta.role || '').toLowerCase()
   const requiresAuth = Boolean(to.meta.requiresAuth)
 
-  // 2️⃣ Gestion des liens d'invitation directs
-  if (to.name === 'invite' && typeof to.params.token === 'string') {
-    const token = to.params.token
-    const expires = Date.now() + 1000 * 60 * 10 // 10 min
+  // 2️⃣ Invitation directe (via /invitation/:id)
+  if (to.name === 'invitation-accept' && typeof to.params.id === 'string') {
+    const invitationId = to.params.id
 
     if (!user) {
-      // 🔹 Pas connecté → on stocke et on redirige vers /
-      localStorage.setItem('pendingInvite', JSON.stringify({ token, expires }))
-      return next({ path: '/', query: { redirect: '/' } })
-    } else {
-      // 🔹 Déjà connecté → traite immédiatement
-      const groupId = await checkPendingInvite(token) // ✅ on passe le token
+      // Pas connecté → stocker l’invite et ouvrir modal auth
+      localStorage.setItem(
+        'pendingInvite',
+        JSON.stringify({ invitationId, expires: Date.now() + 1000 * 60 * 10 }),
+      )
+      return next({ path: '/', query: { redirect: to.fullPath, showAuth: '1' } })
+    }
+
+    // Déjà connecté → accepte directement
+    try {
+      const result = await invitationsStore.actDirect(invitationId, 'accept')
+      if (result?.ok) {
+        if (result.groupName) {
+          bannerStore.setRecentJoin(result.groupName) // ✅ on set ici
+        }
+        return next(result.groupId ? `/groupes/${result.groupId}` : '/groupes')
+      }
+    } catch (err) {
+      console.error('[router guard] Invitation erreur :', err)
+    }
+    return next('/groupes') // fallback plus logique que /
+  }
+  // 2bis️⃣ Invitation par lien (via /invite/:token)
+  if (to.name === 'InviteLink' && typeof to.params.token === 'string') {
+    const token = to.params.token
+
+    if (!user) {
+      // Pas connecté → on stocke en localStorage, comme pour l'autre cas
+      localStorage.setItem(
+        'pendingInvite',
+        JSON.stringify({ token, expires: Date.now() + 1000 * 60 * 10 }),
+      )
+      return next({ path: '/', query: { redirect: to.fullPath, showAuth: '1' } })
+    }
+
+    // Si connecté → on appelle l’API pour "actOnInvite" via token
+    try {
+      const groupId = await checkPendingInvite(token)
+      if (groupId) {
+        bannerStore.setRecentJoin('Groupe rejoint avec succès') // ou nom récupéré via backend
+        return next(`/groupes/${groupId}`)
+      }
+    } catch (err) {
+      console.error('[router guard] InviteLink erreur :', err)
+    }
+    return next('/groupes') // fallback
+  }
+
+  // 3️⃣ Cas "pendingInvite" (après login)
+  if (user && localStorage.getItem('pendingInvite')) {
+    const stored = JSON.parse(localStorage.getItem('pendingInvite')!)
+    localStorage.removeItem('pendingInvite')
+
+    if (stored.invitationId) {
+      try {
+        const result = await invitationsStore.actDirect(stored.invitationId, 'accept')
+        if (result?.ok) {
+          if (result.groupName) {
+            console.log('[router guard] setRecentJoin appelé avec :', result.groupName)
+            bannerStore.setRecentJoin(result.groupName) // ✅ idem ici
+          }
+          return next(result.groupId ? `/groupes/${result.groupId}` : '/groupes')
+        }
+      } catch (err) {
+        console.error('[router guard] Invitation erreur (pendingInvite):', err)
+      }
+    }
+
+    if (stored.token) {
+      const groupId = await checkPendingInvite(stored.token)
       if (groupId) return next(`/groupes/${groupId}`)
-      return next('/groups') // fallback si token invalide
     }
   }
 
-  // 3️⃣ Cas où l’utilisateur vient de se connecter et a un token stocké
-  if (user && localStorage.getItem('pendingInvite')) {
-    const groupId = await checkPendingInvite()
-    if (groupId) return next(`/groupes/${groupId}`)
-  }
-
-  // 4️⃣ Auth requise ?
+  // 4️⃣ Auth requise
   if (requiresAuth && !user) {
-    return next({ path: '/login', query: { redirect: to.fullPath } })
+    return next({ path: '/', query: { redirect: to.fullPath, showAuth: '1' } })
   }
 
   // 5️⃣ Routes admin
   if (to.path.startsWith('/admin')) {
-    if (!user) return next({ path: '/login', query: { redirect: to.fullPath } })
+    if (!user) return next({ path: '/', query: { redirect: to.fullPath, showAuth: '1' } })
     if (role !== 'admin') return next('/dashboard')
   }
 
-  // 6️⃣ Vérif du role
+  // 6️⃣ Vérif role
   if (requiredRole && role !== requiredRole) {
     return next(role === 'admin' ? '/admin' : '/dashboard')
   }
 
-  // 7️⃣ Si déjà connecté et on va sur /login
+  // 7️⃣ Déjà connecté et on va sur /login → redirect
   if (to.path === '/login' && user) {
     return next(role === 'admin' ? '/admin' : '/dashboard')
   }
 
   return next()
 })
+
 
 
 

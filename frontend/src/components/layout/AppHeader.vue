@@ -2,13 +2,15 @@
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useRouter } from 'vue-router'
+import BannerInvitation from '@/components/ui/BannerInvitations.vue' // ✅ import
+
 const temperature = ref<string | null>(null)
 const city = ref<string | null>(null)
 const iconCode = ref<string | null>(null)
 const description = ref<string | null>(null)
 const weatherEmoji = ref<string>('')
+
 defineEmits(['auth-requested'])
-import { defineAsyncComponent } from 'vue'
 
 const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY
 const authStore = useAuthStore()
@@ -28,6 +30,7 @@ const getWeatherEmoji = (icon: string): string => {
   }
   return map[icon] ?? '❔'
 }
+
 const handleLogout = async () => {
   try {
     await authStore.logout()
@@ -36,6 +39,7 @@ const handleLogout = async () => {
     console.error('Erreur à la déconnexion :', err)
   }
 }
+
 const fetchWeather = async (lat: number, lon: number) => {
   try {
     const res = await fetch(
@@ -53,9 +57,6 @@ const fetchWeather = async (lat: number, lon: number) => {
     console.error('Erreur météo', err)
   }
 }
-const BannerInvitations = defineAsyncComponent(
-  () => import('../ui/BannerInvitations.vue') // ← path is relative to AppHeader.vue
-)
 
 onMounted(() => {
   if ('geolocation' in navigator) {
@@ -66,16 +67,16 @@ onMounted(() => {
     )
   }
 })
-
 </script>
+
 <template>
   <header class="header">
+    <!-- Logo -->
     <div class="header-logo">
       <img src="@/assets/logos/spotline_logo_34x64.png" alt="Logo Spotline" class="logo" />
     </div>
-        <BannerInvitations />
 
-    
+    <!-- Centre -->
     <div class="header-center">
       <div class="title">Spotline</div>
       <div class="weather-placeholder" v-if="temperature && city">
@@ -88,24 +89,28 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- Actions -->
     <div class="header-action">
-  <button
-    v-if="!authStore.user"
-    @click="$emit('auth-requested')"
-    class="auth-button"
-  >
-    Se connecter
-  </button>
+      <button
+        v-if="!authStore.user"
+        @click="$emit('auth-requested')"
+        class="auth-button"
+      >
+        Se connecter
+      </button>
 
-  <button
-  v-else
-  class="auth-button"
-  @click="handleLogout"
->
-  Se déconnecter
-</button>
-</div>
+      <button
+        v-else
+        class="auth-button"
+        @click="handleLogout"
+      >
+        Se déconnecter
+      </button>
+    </div>
   </header>
+
+  <!-- ✅ Bannière en dessous du header -->
+  <BannerInvitation />
 </template>
 
 <style scoped src="../styles/AppHeader.scss" lang="scss" />

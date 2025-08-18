@@ -1,14 +1,35 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useInvitationsStore } from '@/stores/invitationsStore'
+import { isNeedsAuth } from '@/types/invitations'
 
 const route = useRoute()
 const router = useRouter()
+const invitations = useInvitationsStore()
 
-onMounted(() => {
-  // Ici on ne fait rien, le guard gère tout
-  // On redirige vers home si on arrive ici sans token
-  if (!route.params.token) {
+onMounted(async () => {
+  const token = route.params.id as string | undefined
+  if (!token) {
+    router.replace('/')
+    return
+  }
+
+  try {
+    const res = await invitations.act(token, 'accept')
+    if (isNeedsAuth(res)) {
+      // pas connecté → on envoie vers login avec redirect
+      router.replace(`/login?redirect=/invite/${token}`)
+      return
+    }
+
+    if (res.ok && res.groupId) {
+      router.replace(`/groupes/${res.groupId}`)
+    } else {
+      router.replace('/')
+    }
+  } catch (err) {
+    console.error('[InviteView] erreur act', err)
     router.replace('/')
   }
 })

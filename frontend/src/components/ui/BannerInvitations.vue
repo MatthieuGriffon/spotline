@@ -1,61 +1,54 @@
 <script setup lang="ts">
-import { watch, computed, ref, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useInvitationsStore } from '@/stores/invitationsStore'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { useBannerStore } from '@/stores/bannerStore'
 
 const auth = useAuthStore()
 const invitations = useInvitationsStore()
-const recentJoin = ref<{ groupName: string } | null>(null)
-
-function checkRecentJoin() {
-  const stored = localStorage.getItem('inviteAcceptedBanner')
-  if (stored) {
-    try {
-      const data: { groupName: string; ts: number } = JSON.parse(stored)
-      if (Date.now() - data.ts < 15000) {
-        recentJoin.value = { groupName: data.groupName }
-      }
-    } catch {
-      console.warn('Données bannière récentes invalides')
-    }
-    localStorage.removeItem('inviteAcceptedBanner')
-  }
-}
-
-watch(
-  () => auth.user,
-  async (user) => {
-    if (user) {
-      try {
-        await invitations.loadMine()
-      } catch (e) {
-        console.warn('[BannerInvitations] loadMine failed', e)
-      }
-      checkRecentJoin()
-    }
-  },
-  { immediate: true }
-)
+const bannerStore = useBannerStore()
 
 const pending = computed(() =>
   invitations.myInvitations.filter(i => i.status === 'PENDING')
 )
 
-onMounted(() => {
-  if (auth.user) checkRecentJoin()
-})
+console.log('Appel de BannerInvitations.vue')
 
 async function act(id: string, action: 'accept' | 'decline') {
+  if (action === 'accept') {
+    const invite = invitations.myInvitations.find(i => i.id === id)
+    if (invite) {
+      // On déclenche la bannière globale
+      bannerStore.setRecentJoin(invite.groupName)
+    }
+  }
+
   await invitations.actDirect(id, action)
 }
+
+onMounted(async () => {
+  console.log('[BannerInvitations] mounted — auth.user =', auth.user)
+
+  if (auth.user) {
+    await invitations.loadMine()
+    console.log('[BannerInvitations] after loadMine, recentJoin =', bannerStore.recentJoin)
+  }
+})
+
+watch(
+  () => auth.user,
+  async (newUser) => {
+    if (newUser) {
+      console.log('[BannerInvitations] auth.user détecté → loadMine lancé')
+      await invitations.loadMine()
+      console.log('[BannerInvitations] after loadMine, recentJoin =', bannerStore.recentJoin)
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
-  <!-- 🎉 Message après lien/QR -->
-  <div v-if="recentJoin" class="banner-invites success">
-    Tu as rejoint le groupe <strong>{{ recentJoin.groupName }}</strong> !
-  </div>
-
   <!-- 📩 Invitations classiques -->
   <div v-if="pending.length" class="banner-invites">
     <div class="title">
@@ -78,10 +71,6 @@ async function act(id: string, action: 'accept' | 'decline') {
   border-radius: 8px;
   padding: .5rem .75rem;
   margin: .5rem 0;
-}
-.banner-invites.success {
-  background: #d4edda;
-  border: 1px solid #c3e6cb;
 }
 .item {
   display: flex;

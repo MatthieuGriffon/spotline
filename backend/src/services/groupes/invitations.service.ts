@@ -69,7 +69,11 @@ export async function createDirectInvitation(
   params: CreateDirectParams
 ) {
   const { prisma, email: mailer } = app;
-
+  // 🔎 On récupère le groupe (pour vérifier et pour le nom dans l’email)
+  const group = await prisma.group.findUniqueOrThrow({
+    where: { id: params.groupId },
+    select: { id: true, name: true },
+  });
   // 1) vérif droits
   const gm = await prisma.groupMember.findFirst({
     where: { groupId: params.groupId, userId: params.inviterId, role: "admin" },
@@ -165,20 +169,24 @@ export async function createDirectInvitation(
       data: {
         groupId: params.groupId,
         inviterId: params.inviterId,
-        inviteeUserId: user.id, // ✅ corrige: user existant → inviteeUserId (pas inviteeEmail)
+        inviteeUserId: user.id, // ou inviteeEmail si user inconnu
         status: PrismaInvitationStatus.PENDING,
       },
       select: { id: true },
     });
+    const acceptUrl = `${process.env.FRONTEND_URL}/invitation/${inv.id}`;
 
     try {
       await mailer.sendMail({
-        to: user.email!,
-        subject: "Invitation à rejoindre un groupe",
-        html: `<p>Vous avez été invité(e) à rejoindre un groupe. Connectez‑vous pour l’accepter.</p>`,
+        to: user.email!, // ou `email` si user inconnu
+        subject: `Invitation à rejoindre ${group.name}`,
+        html: `
+      <p>Vous avez été invité(e) à rejoindre <b>${group.name}</b>.</p>
+      <p><a href="${acceptUrl}">Cliquez ici pour accepter l’invitation</a></p>
+    `,
       });
     } catch (e) {
-      app.log.warn({ e }, "Email non envoyé (user existant)");
+      app.log.warn({ e }, "Email non envoyé");
     }
 
     return {
@@ -247,6 +255,53 @@ export async function createLinkInvitation(
 
   const url = `${process.env.FRONTEND_URL}/invite/${token}`;
   return { token, url, expiresAt: expiresAt.toISOString(), maxUses };
+}
+
+export async function createLinkInvitationQR(
+  f: FastifyInstance,
+  p: {
+    groupId: string;
+    inviterId: string;
+    expiresInDays?: number;
+    maxUses?: number;
+    format?: "png" | "svg" | "base64";
+  }
+) {
+  console.log("FRONTEND_URL process.env =", process.env.FRONTEND_URL);
+
+  // 1) Créer le lien via ta fonction existante
+  const link = await createLinkInvitation(f, {
+    groupId: p.groupId,
+    inviterId: p.inviterId,
+    expiresInDays: p.expiresInDays,
+    maxUses: p.maxUses,
+  });
+
+  // On génère l’URL complète vers le frontend
+  const fullUrl = `${process.env.FRONTEND_URL}/invite/${link.token}`;
+
+  // Génération du QR code
+  const format = p.format ?? "png";
+  if (format === "png") {
+    const buffer = await QRCode.toBuffer(fullUrl, { type: "png", width: 300 });
+    return {
+      content: buffer.toString("base64"), // ⚠️ conversion en base64 pour le frontend
+      contentType: "image/png",
+      filename: `invite-${link.token}.png`,
+    };
+  }
+
+  if (format === "svg") {
+    const svg = await QRCode.toString(fullUrl, { type: "svg", width: 300 });
+    return {
+      content: svg,
+      contentType: "image/svg+xml",
+      filename: `invite-${link.token}.svg`,
+    };
+  }
+
+  const dataUrl = await QRCode.toDataURL(fullUrl, { width: 300 });
+  return { content: dataUrl, contentType: "application/json", filename: null };
 }
 
 export async function previewLinkInvitation(
@@ -552,99 +607,143 @@ export async function linkEmailInvitationsOnLogin(
 }
 
 export async function actDirectInvitationForUser(
-  f: FastifyInstance,
-  p: { invitationId: string; userId: string; action: "accept" | "decline" }
+  fastify: FastifyInstance,
+  params: { invitationId: string; userId: string; action: "accept" | "decline" }
 ) {
-  const inv = await f.prisma.groupInvitation.findUnique({
-    where: { id: p.invitationId },
+  const { invitationId, userId, action } = params;
+
+  const invite = await fastify.prisma.groupInvitation.findUnique({
+    where: { id: invitationId },
+    include: { group: true },
   });
-  if (!inv) throw f.httpErrors.notFound("Invitation introuvable");
 
-  // doit vous être adressée (après linkEmailInvitationsOnLogin c'est par userId)
-  if (inv.inviteeUserId !== p.userId) {
-    throw f.httpErrors.forbidden("Invitation non destinée à cet utilisateur");
-  }
-  if (
-    inv.status === PrismaInvitationStatus.REVOKED ||
-    inv.status === PrismaInvitationStatus.DECLINED
-  ) {
-    throw f.httpErrors.conflict("Invitation inactive");
-  }
-  if (inv.expiresAt && new Date() > inv.expiresAt) {
-    throw f.httpErrors.conflict("Invitation expirée");
-  }
-  if (inv.token) {
-    // Sécurité: une directe ne devrait pas avoir de token; on accepte quand même la logique.
+  if (!invite || invite.status !== "PENDING") {
+    return { ok: false, reason: "not_found" };
   }
 
-  if (p.action === "accept") {
-    // idempotent: si déjà membre, OK
-    const already = await f.prisma.groupMember.findUnique({
-      where: { userId_groupId: { userId: p.userId, groupId: inv.groupId } },
+  if (action === "decline") {
+    await fastify.prisma.groupInvitation.update({
+      where: { id: invitationId },
+      data: { status: "DECLINED" },
     });
-    if (!already) {
-      await f.prisma.groupMember.create({
-        data: { groupId: inv.groupId, userId: p.userId, role: "member" },
-      });
-    }
-    await f.prisma.groupInvitation.update({
-      where: { id: inv.id },
-      data: { status: PrismaInvitationStatus.ACCEPTED },
-    });
-    return { ok: true };
-  } else {
-    await f.prisma.groupInvitation.update({
-      where: { id: inv.id },
-      data: { status: PrismaInvitationStatus.DECLINED },
-    });
-    return { ok: true };
+    return {
+      ok: true,
+      groupId: invite.groupId,
+      groupName: invite.group?.name ?? null,
+    };
   }
+
+  // accept
+  await fastify.prisma.groupMember.upsert({
+    where: { userId_groupId: { userId, groupId: invite.groupId } },
+    update: {},
+    create: { userId, groupId: invite.groupId, role: "member" },
+  });
+
+  await fastify.prisma.groupInvitation.update({
+    where: { id: invitationId },
+    data: { status: "ACCEPTED" },
+  });
+
+  return {
+    ok: true,
+    groupId: invite.groupId,
+    groupName: invite.group?.name ?? null,
+  };
 }
 
-export async function createLinkInvitationQR(
+export async function consumeLinkInvitationForUser(
   f: FastifyInstance,
-  p: {
-    groupId: string;
-    inviterId: string;
-    expiresInDays?: number;
-    maxUses?: number;
-    format?: "png" | "svg" | "base64";
-  }
+  {
+    token,
+    userId,
+    action,
+  }: { token: string; userId: string; action: "accept" | "decline" }
 ) {
-  console.log("FRONTEND_URL process.env =", process.env.FRONTEND_URL);
+  f.log.info({ action }, "[consumeLinkInvitationForUser] action reçue");
+if (action === "decline") {
+  const invite = await f.prisma.groupInvitation.findFirst({
+    where: { token, status: "PENDING" },
+    include: { group: true },
+  });
 
-  // 1) Créer le lien via ta fonction existante
- const link = await createLinkInvitation(f, {
-   groupId: p.groupId,
-   inviterId: p.inviterId,
-   expiresInDays: p.expiresInDays,
-   maxUses: p.maxUses,
- });
+  await f.prisma.groupInvitation.updateMany({
+    where: { token, status: "PENDING" },
+    data: { status: "DECLINED" },
+  });
 
- // On génère l’URL complète vers le frontend
- const fullUrl = `${process.env.FRONTEND_URL}/invite/${link.token}`;
+  return {
+    ok: true,
+    groupId: invite?.groupId,
+    groupName: invite?.group?.name,
+  };
+}
 
- // Génération du QR code
- const format = p.format ?? "png";
- if (format === "png") {
-   const buffer = await QRCode.toBuffer(fullUrl, { type: "png", width: 300 });
-   return {
-     content: buffer.toString("base64"), // ⚠️ conversion en base64 pour le frontend
-     contentType: "image/png",
-     filename: `invite-${link.token}.png`,
-   };
- }
+  const invite = await f.prisma.groupInvitation.findFirst({
+    where: { token, status: "PENDING" },
+    include: { group: true },
+  });
+  f.log.info(
+    { token, invite },
+    "[consumeLinkInvitationForUser] invite trouvé ?"
+  );
 
- if (format === "svg") {
-   const svg = await QRCode.toString(fullUrl, { type: "svg", width: 300 });
-   return {
-     content: svg,
-     contentType: "image/svg+xml",
-     filename: `invite-${link.token}.svg`,
-   };
- }
 
- const dataUrl = await QRCode.toDataURL(fullUrl, { width: 300 });
- return { content: dataUrl, contentType: "application/json", filename: null };
+  if (!invite) {
+      f.log.info(
+        { token },
+        "[consumeLinkInvitationForUser] invite introuvable"
+      );
 
+    return { ok: false, reason: "invalid" };
+  }
+
+  // Vérif quotas / expiry
+  if (invite.maxUses && invite.usedCount >= invite.maxUses) {
+    return {
+      ok: false,
+      reason: "quota_reached",
+      groupId: invite.groupId,
+      groupName: invite.group.name,
+    };
+  }
+  if (invite.expiresAt && new Date() > invite.expiresAt) {
+    return {
+      ok: false,
+      reason: "expired",
+      groupId: invite.groupId,
+      groupName: invite.group.name,
+    };
+  }
+
+  // Ajouter au groupe
+  await f.prisma.groupMember.upsert({
+    where: { userId_groupId: { userId, groupId: invite.groupId } },
+    update: {},
+    create: { userId, groupId: invite.groupId, role: "member" },
+  });
+
+  // Marquer comme ACCEPTED + incrémenter compteur
+  await f.prisma.groupInvitation.update({
+    where: { id: invite.id },
+    data: {
+      usedCount: { increment: 1 },
+      status:
+        invite.maxUses && invite.usedCount + 1 >= invite.maxUses
+          ? "EXPIRED"
+          : "ACCEPTED",
+    },
+  });
+
+ f.log.info(
+   { groupId: invite.groupId, groupName: invite.group.name },
+   "[consumeLinkInvitationForUser] cas ACCEPT"
+ );
+
+
+  return {
+    ok: true,
+    groupId: invite.groupId,
+    groupName: invite.group.name,
+  };
 }

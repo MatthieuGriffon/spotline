@@ -145,7 +145,11 @@ export default async function groupInvitationsRoutes(app: App) {
         params: InvitationIdParams,
         body: S.AcceptOrDeclineBody,
         response: {
-          200: Type.Object({ ok: Type.Boolean() }),
+          200: Type.Object({
+            ok: Type.Boolean(),
+            groupId: Type.Optional(Type.String()),
+            groupName: Type.Optional(Type.String()),
+          }),
           400: ErrorResponse,
           401: ErrorResponse,
           403: ErrorResponse,
@@ -186,4 +190,33 @@ export default async function groupInvitationsRoutes(app: App) {
     },
     C.createQR
   );
+
+  // ========== Invitation par lien (accept/decline) ==========
+const InviteTokenParams = Type.Object({ token: Type.String() });
+type InviteTokenParamsType = Static<typeof InviteTokenParams>;
+
+app.post<{
+  Params: InviteTokenParamsType;
+  Body: Static<typeof S.AcceptOrDeclineBody>;
+}>(
+  "/invite/:token/act",
+  {
+    schema: {
+      tags: ["Invitations"],
+      summary: "Accepter/Refuser une invitation par lien",
+      params: InviteTokenParams,
+      body: S.AcceptOrDeclineBody,
+      response: {
+        200: S.ActOnInviteResponse,
+        400: ErrorResponse,
+        401: ErrorResponse,
+        403: ErrorResponse,
+        404: ErrorResponse,
+        409: ErrorResponse,
+      },
+    },
+  },
+  C.actOnInvite
+);
+
 }
