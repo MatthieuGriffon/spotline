@@ -21,6 +21,7 @@
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.3",
     "@fastify/type-provider-typebox": "^5.2.0",
+    "@fastify/websocket": "^11.2.0",
     "@prisma/client": "^6.12.0",
     "@sinclair/typebox": "^0.34.38",
     "bcrypt": "^6.0.0",
@@ -40,6 +41,7 @@
     "@types/qrcode": "^1.5.5",
     "@types/sanitize-html": "^2.16.0",
     "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
     "dotenv-cli": "^9.0.0",
     "tsx": "^4.20.3"
   }

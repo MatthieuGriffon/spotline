@@ -29,6 +29,9 @@ import { adminStatsRoutes } from "@/routes/admin/statsRoutes.routes";
 import { reportedPrisesRoutes } from "@/routes/admin/reportedPrise.routes";
 import { moderationLogRoutes } from "./routes/admin/moderationLog.routes";
 import { dashboardRoutes } from "./routes/dashboard/dashboard.routes";
+import chatRoutes from "@/routes/chat/chat.routes";
+import chatWsRoutes from "@/routes/chat/chat.ws";
+import websocketPlugin from "@fastify/websocket";
 
 import { initAdmin } from "@/scripts/init-admin";
 
@@ -70,6 +73,7 @@ await app.register(multipart);
 await app.register(prismaPlugin);
 await app.register(emailPlugin);
 await app.register(updateLastSeenPlugin);
+await app.register(websocketPlugin);
 
 // --- Swagger
 await app.register(swagger, {
@@ -107,7 +111,10 @@ await app.register(dashboardRoutes, { prefix: "/api" });
 
 await app.register(groupesRoutes, { prefix: "/api/groupes" });
 await app.register(groupInvitationsRoutes, { prefix: "/api/groupes" });
-await app.register(invitePublicRoutes, { prefix: "/api" }); 
+await app.register(invitePublicRoutes, { prefix: "/api" });
+await app.register(chatRoutes, { prefix: "/api" }); 
+await app.register(chatWsRoutes, { prefix: "/api" });
+
 // --- Init data
 app.ready().then(async () => {
   await initAdmin(app.prisma);

@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { useInvitationsStore } from '@/stores/invitationsStore'
 import { useBannerStore } from '@/stores/bannerStore'
 import type { GroupInvitationAdminItem } from '@/types/invitations'
+import ChatPanel from '@/components/chat/ChatPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -29,6 +30,20 @@ const pending = ref({
   invite: false,
 })
 
+type SectionKey = 'edit' | 'members' | 'sessions' | 'prises' | 'invitesEmail' | 'invitesLink'
+
+const expandedSections = ref<Record<SectionKey, boolean>>({
+  edit: false,
+  members: false,
+  invitesEmail: false,
+  invitesLink: false,
+  sessions: false,
+  prises: false,
+})
+
+function toggleSection(key: SectionKey) {
+  expandedSections.value[key] = !expandedSections.value[key]
+}
 async function loadGroup() {
   if (!auth.user && auth.fetchMe) {
     try {
@@ -305,6 +320,9 @@ async function createInviteQR() {
   })
   lastCreatedQR.value = `data:image/png;base64,${qr}`
 }
+
+const showChat = ref(false)
+
 </script>
 
 <template>
@@ -362,180 +380,220 @@ async function createInviteQR() {
       <div v-if="invSuccess" class="status success" aria-live="polite">{{ invSuccess }}</div>
 
       <!-- Édition du groupe -->
-      <section class="section-block" v-if="isEditing && canManage">
+      <section class="section-block" v-if="canManage">
         <div class="card">
-          <h2 class="section-title">Éditer le groupe</h2>
-          <div class="form-grid">
-            <label>
-              <span>Nom</span>
-              <input v-model="editName" placeholder="Nom du groupe" />
-            </label>
-            <label>
-              <span>Description</span>
-              <textarea v-model="editDescription" placeholder="Description"></textarea>
-            </label>
-          </div>
-          <div class="row-actions">
-            <button class="btn" @click="isEditing = false">Annuler</button>
-            <button
-              class="btn primary"
-              @click="saveEdit"
-              :disabled="pending.save || !editName.trim() || !isDirty"
-            >
-              {{ pending.save ? '...' : 'Enregistrer' }}
-            </button>
-          </div>
+          <!-- Titre cliquable -->
+          <h2 class="section-title" @click="toggleSection('edit')">
+            Éditer le groupe
+            <span class="chevron" :class="{ open: expandedSections.edit }">▶</span>
+          </h2>
+
+          <!-- Contenu repliable -->
+          <transition name="slide-fade">
+            <div v-if="expandedSections.edit" class="section-content">
+              <div class="form-grid">
+                <label>
+                  <span>Nom</span>
+                  <input v-model="editName" placeholder="Nom du groupe" />
+                </label>
+                <label>
+                  <span>Description</span>
+                  <textarea v-model="editDescription" placeholder="Description"></textarea>
+                </label>
+              </div>
+              <div class="row-actions">
+                <button class="btn" @click="isEditing = false">Annuler</button>
+                <button
+                  class="btn primary"
+                  @click="saveEdit"
+                  :disabled="pending.save || !editName.trim() || !isDirty"
+                >
+                  {{ pending.save ? '...' : 'Enregistrer' }}
+                </button>
+              </div>
+            </div>
+          </transition>
         </div>
       </section>
 
       <!-- Membres -->
       <section class="section-block">
-        <h2 class="section-title">Membres</h2>
-        <ul class="members-list">
-          <li v-for="m in current.members" :key="m.userId" class="member-item">
-            <div class="info">
-              <div class="pseudo">{{ m.pseudo }}</div>
-              <div class="role">
-                Rôle : <strong>{{ m.role }}</strong>
-              </div>
-            </div>
-
-            <div class="member-actions" v-if="canManage">
-              <select
-                :value="m.role"
-                @change="
-                  changeRole(
-                    m.userId,
-                    ($event.target as HTMLSelectElement).value as 'admin' | 'member' | 'guest',
-                  )
-                "
-                :disabled="
-                  pending.role === m.userId ||
-                  (isSoleAdmin && m.userId === meId && m.role === 'admin')
-                "
-                aria-label="Changer le rôle"
-              >
-                <option value="admin">admin</option>
-                <option value="member">member</option>
-                <option value="guest">guest</option>
-              </select>
-              <button
-                class="btn danger"
-                @click="removeMember(m.userId)"
-                :disabled="
-                  pending.remove === m.userId ||
-                  (admins.length === 1 && admins[0].userId === m.userId) ||
-                  m.userId === meId
-                "
-              >
-                {{ pending.remove === m.userId ? '...' : 'Retirer' }}
-              </button>
-            </div>
-          </li>
-        </ul>
-      </section>
-
-      <!-- Invitations (ADMIN ONLY) -->
-      <section class="section-block" v-if="canManage">
-        <div class="card" style="margin-bottom: 0.75rem">
-          <h3 class="sub-title">Invitation par e-mail</h3>
-          <div class="invite-grid">
-            <input
-              v-model.trim="directEmail"
-              type="email"
-              inputmode="email"
-              placeholder="email@exemple.com"
-              @blur="validateEmail()"
-              :class="{ invalid: !!emailError }"
-              :aria-invalid="!!emailError"
-              :aria-describedby="emailError ? 'email-error' : undefined"
-            />
-            <button
-              class="btn primary"
-              @click="sendDirectInviteByEmail"
-              :disabled="pending.invite || !directEmail || !!emailError"
-            >
-              {{ pending.invite ? '...' : 'Envoyer' }}
-            </button>
-          </div>
-          <div v-if="lastCreatedQR">
-            <img :src="lastCreatedQR" alt="QR code d’invitation" />
-          </div>
-          <p v-if="emailError" id="email-error" class="form-error">{{ emailError }}</p>
-        </div>
-
         <div class="card">
-          <h3 class="sub-title">Lien d’invitation</h3>
-          <div class="invite-link-grid">
-            <label>
-              <span>Expire dans (jours)</span>
-              <input type="number" min="1" step="1" v-model.number="linkExpiresInDays" />
-            </label>
-            <label>
-              <span>Nombre max d’utilisations</span>
-              <input type="number" min="1" step="1" v-model.number="linkMaxUses" />
-            </label>
-            <button class="btn" @click="createInviteLink">Générer lien</button>
-            <button class="btn" @click="createInviteQR">Générer QR</button>
-          </div>
+          <h2 class="section-title" @click="toggleSection('members')">
+            Membres
+            <span class="toggle-indicator">
+              {{ expandedSections.members ? '▼' : '▶' }}
+            </span>
+          </h2>
 
-          <div v-if="lastCreatedLink" class="generated-link">
-            <div class="row">
-              <span class="mono">{{ lastCreatedLink.url }}</span>
-              <button class="btn" @click="copyToClipboard(lastCreatedLink.url)">Copier</button>
-            </div>
-            <small
-              >Expire le {{ new Date(lastCreatedLink.expiresAt).toLocaleString() }} • max
-              {{ lastCreatedLink.maxUses }} usages</small
-            >
-          </div>
-
-          <div class="admin-invites">
-            <div class="row between">
-              <h4>Invitations actives</h4>
-              <button class="btn" @click="refreshInvites">Rafraîchir</button>
-            </div>
-            <ul class="list">
-              <li v-for="inv in groupInvites" :key="inv.id" class="row">
-                <div class="col">
-                  <div class="title-row">
-                    {{ inv.type === 'direct' ? 'Direct' : 'Lien' }}
-                    <template v-if="inv.email"> — {{ inv.email }}</template>
-                    <span class="badge" :data-status="inv.status" style="margin-left: 0.5rem">
-                      {{ inv.status }}
-                    </span>
+          <div v-if="expandedSections.members">
+            <ul class="members-list">
+              <li v-for="m in current.members" :key="m.userId" class="member-item">
+                <div class="info">
+                  <div class="pseudo">{{ m.pseudo }}</div>
+                  <div class="role">
+                    Rôle : <strong>{{ m.role }}</strong>
                   </div>
-                  <small>
-                    créé le
-                    <time :datetime="inv.createdAt">{{
-                      new Date(inv.createdAt).toLocaleString()
-                    }}</time>
-                    • exp {{ inv.expiresAt ? new Date(inv.expiresAt).toLocaleString() : '—' }} •
-                    uses {{ inv.uses }}/{{ inv.maxUses ?? '∞' }}
-                  </small>
                 </div>
 
-                <button
-                  class="btn danger"
-                  @click="revoke(inv.id)"
-                  :disabled="
-                    pending.revoke === inv.id ||
-                    inv.status === 'REVOKED' ||
-                    inv.status === 'ACCEPTED'
-                  "
-                >
-                  {{ pending.revoke === inv.id ? '...' : 'Révoquer' }}
-                </button>
+                <div class="member-actions" v-if="canManage">
+                  <select
+                    :value="m.role"
+                    @change="
+                      changeRole(
+                        m.userId,
+                        ($event.target as HTMLSelectElement).value as 'admin' | 'member' | 'guest',
+                      )
+                    "
+                    :disabled="
+                      pending.role === m.userId ||
+                      (isSoleAdmin && m.userId === meId && m.role === 'admin')
+                    "
+                    aria-label="Changer le rôle"
+                  >
+                    <option value="admin">admin</option>
+                    <option value="member">member</option>
+                    <option value="guest">guest</option>
+                  </select>
+
+                  <button
+                    class="btn danger"
+                    @click="removeMember(m.userId)"
+                    :disabled="
+                      pending.remove === m.userId ||
+                      (admins.length === 1 && admins[0].userId === m.userId) ||
+                      m.userId === meId
+                    "
+                  >
+                    {{ pending.remove === m.userId ? '...' : 'Retirer' }}
+                  </button>
+                </div>
               </li>
             </ul>
           </div>
         </div>
       </section>
 
+      <!-- Invitations (admin) -->
+      <section class="section-block" v-if="canManage">
+        <div class="card">
+          <h2 class="section-title" @click="toggleSection('invitesEmail')">
+            Invitations (admin seulement)
+            <span class="toggle-indicator">
+              {{ expandedSections.invitesEmail ? '▼' : '▶' }}
+            </span>
+          </h2>
+
+          <div v-if="expandedSections.invitesEmail">
+            <!-- Sous-bloc Email -->
+            <div class="card" style="margin-bottom: 0.75rem">
+              <h3 class="sub-title">Invitation par e-mail</h3>
+              <div class="invite-grid">
+                <input
+                  v-model.trim="directEmail"
+                  type="email"
+                  inputmode="email"
+                  placeholder="email@exemple.com"
+                  @blur="validateEmail()"
+                  :class="{ invalid: !!emailError }"
+                  :aria-invalid="!!emailError"
+                  :aria-describedby="emailError ? 'email-error' : undefined"
+                />
+                <button
+                  class="btn primary"
+                  @click="sendDirectInviteByEmail"
+                  :disabled="pending.invite || !directEmail || !!emailError"
+                >
+                  {{ pending.invite ? '...' : 'Envoyer' }}
+                </button>
+              </div>
+              <div v-if="lastCreatedQR">
+                <img :src="lastCreatedQR" alt="QR code d’invitation" />
+              </div>
+              <p v-if="emailError" id="email-error" class="form-error">{{ emailError }}</p>
+            </div>
+
+            <!-- Sous-bloc Lien -->
+            <div class="card">
+              <h3 class="sub-title">Lien d’invitation</h3>
+              <div class="invite-link-grid">
+                <label>
+                  <span>Expire dans (jours)</span>
+                  <input type="number" min="1" step="1" v-model.number="linkExpiresInDays" />
+                </label>
+                <label>
+                  <span>Nombre max d’utilisations</span>
+                  <input type="number" min="1" step="1" v-model.number="linkMaxUses" />
+                </label>
+                <button class="btn" @click="createInviteLink">Générer lien</button>
+                <button class="btn" @click="createInviteQR">Générer QR</button>
+              </div>
+
+              <div v-if="lastCreatedLink" class="generated-link">
+                <div class="row">
+                  <span class="mono">{{ lastCreatedLink.url }}</span>
+                  <button class="btn" @click="copyToClipboard(lastCreatedLink.url)">Copier</button>
+                </div>
+                <small>
+                  Expire le {{ new Date(lastCreatedLink.expiresAt).toLocaleString() }} • max
+                  {{ lastCreatedLink.maxUses }} usages
+                </small>
+              </div>
+
+              <div class="admin-invites">
+                <div class="row between">
+                  <h4>Invitations actives</h4>
+                  <button class="btn" @click="refreshInvites">Rafraîchir</button>
+                </div>
+                <ul class="list">
+                  <li v-for="inv in groupInvites" :key="inv.id" class="row">
+                    <div class="col">
+                      <div class="title-row">
+                        {{ inv.type === 'direct' ? 'Direct' : 'Lien' }}
+                        <template v-if="inv.email"> — {{ inv.email }}</template>
+                        <span class="badge" :data-status="inv.status" style="margin-left: 0.5rem">
+                          {{ inv.status }}
+                        </span>
+                      </div>
+                      <small>
+                        créé le
+                        <time :datetime="inv.createdAt">{{
+                          new Date(inv.createdAt).toLocaleString()
+                        }}</time>
+                        • exp {{ inv.expiresAt ? new Date(inv.expiresAt).toLocaleString() : '—' }} •
+                        uses {{ inv.uses }}/{{ inv.maxUses ?? '∞' }}
+                      </small>
+                    </div>
+
+                    <button
+                      class="btn danger"
+                      @click="revoke(inv.id)"
+                      :disabled="
+                        pending.revoke === inv.id ||
+                        inv.status === 'REVOKED' ||
+                        inv.status === 'ACCEPTED'
+                      "
+                    >
+                      {{ pending.revoke === inv.id ? '...' : 'Révoquer' }}
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Sessions (résumé) -->
-      <section class="section-block" v-if="current.sessions?.length">
-        <h2 class="section-title">Sessions</h2>
-        <ul class="list">
+      <section class="section-block" v-if="current.sessions && current.sessions.length">
+        <h2 class="section-title" @click="toggleSection('sessions')">
+          Sessions
+          <span class="toggle-indicator">
+            {{ expandedSections.sessions ? '▼' : '▶' }}
+          </span>
+        </h2>
+
+        <ul v-if="expandedSections.sessions" class="list">
           <li v-for="s in current.sessions" :key="s.id" class="row">
             <div class="col">
               <div class="title-row">{{ s.title }}</div>
@@ -549,9 +607,15 @@ async function createInviteQR() {
       </section>
 
       <!-- Prises (résumé) -->
-      <section class="section-block" v-if="current.prises?.length">
-        <h2 class="section-title">Prises</h2>
-        <ul class="list">
+      <section class="section-block" v-if="current.prises && current.prises.length">
+        <h2 class="section-title" @click="toggleSection('prises')">
+          Prises
+          <span class="toggle-indicator">
+            {{ expandedSections.prises ? '▼' : '▶' }}
+          </span>
+        </h2>
+
+        <ul v-if="expandedSections.prises" class="list">
           <li v-for="p in current.prises" :key="p.id" class="row">
             <div class="col">
               <div class="title-row">{{ p.espece }}</div>
@@ -568,7 +632,21 @@ async function createInviteQR() {
       <section class="section-block danger-zone">
         <button class="btn danger" @click="leave">Quitter le groupe</button>
       </section>
+      <!-- Chat de groupe -->
+      <section class="section-block">
+        <!-- Bouton pour ouvrir le chat -->
+        <button @click="showChat = true" class="btn">💬 Ouvrir le chat</button>
 
+        <!-- Modale de chat -->
+        <transition name="fade">
+          <div v-if="showChat" class="chat-modal-backdrop" @click.self="showChat = false">
+            <div class="chat-modal">
+              <button class="btn close-btn" @click="showChat = false">✖ Fermer</button>
+              <ChatPanel :group-id="groupId" />
+            </div>
+          </div>
+        </transition>
+      </section>
       <!-- Modale confirmation -->
       <transition name="fade">
         <div v-if="showLeaveConfirm" class="modal-backdrop" @click.self="cancelLeave">
@@ -587,8 +665,14 @@ async function createInviteQR() {
 </template>
 
 <style scoped lang="scss">
+.invite-grid,
+.invite-link-grid,
+.generated-link,
+.admin-invites {
+  max-width: 100%; /* 👈 occupe toute la largeur de la section */
+}
 .group-detail-wrapper {
-  max-width: 100%;
+  max-width: 800px;
   margin: 0.5rem auto;
   padding: 0.5rem;
   background: var(--color-surface);
@@ -644,13 +728,21 @@ async function createInviteQR() {
 
 /* sections */
 .section-block {
-  margin-bottom: 1.25rem;
+  max-width: 400px;
+  margin: 0 auto 1.25rem;
+  background: var(--color-background-soft);
+  padding: 0.75rem;
+  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-md);
 }
 .section-title {
   font-size: 1.05rem;
   margin: 0 0 0.5rem;
   color: #111827;
   font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.25rem;
 }
 .sub-title {
   margin: 0 0 0.5rem;
@@ -688,9 +780,10 @@ async function createInviteQR() {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  background: #f1f5f9;
+  background: #fff;
   border-radius: var(--radius-md);
   padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
 }
 .member-item .info .pseudo {
   font-weight: 600;
@@ -734,8 +827,9 @@ async function createInviteQR() {
   gap: 0.5rem;
 }
 .row {
-  background: #f1f5f9;
+  background: #fff;
   padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
 }
 .title-row {
@@ -762,7 +856,8 @@ async function createInviteQR() {
   display: flex;
   justify-content: space-between;
   gap: 0.75rem;
-  background: #f1f5f9;
+  background: #fff;
+  border: 1px solid var(--color-border);
   padding: 0.6rem 0.75rem;
   border-radius: var(--radius-md);
 }
@@ -925,8 +1020,8 @@ select {
   border-radius: 12px;
   padding: 1rem;
   box-shadow:
-    0 10px 15px -3px rgba(0,0,0,.1),
-    0 4px 6px -4px rgba(0,0,0,.1);
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1);
 }
 
 .modal-actions {
@@ -935,4 +1030,72 @@ select {
   gap: 0.5rem;
   margin-top: 1rem;
 }
+/* Invitations */
+.invite-grid,
+.invite-link-grid {
+  display: grid;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.invite-grid {
+  grid-template-columns: 1fr auto;
+  max-width: 500px; /* 👈 limite la largeur */
+}
+
+.invite-link-grid {
+  grid-template-columns: 1fr 1fr auto auto;
+  max-width: 600px; /* 👈 limite aussi */
+}
+
+.generated-link,
+.admin-invites {
+  max-width: 600px; /* 👈 tout reste aligné */
+}
+
+.generated-link .row,
+.admin-invites .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.chat-btn {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.chat-btn:hover {
+  background: #125a9c;
+}
+.chat-modal-backdrop {
+  position: fixed;
+  inset: 0; // occupe tout l’écran
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.chat-modal {
+  background: #fff;
+  width: 100%;
+  height: 100%;
+  max-width: 900px; // optionnel si tu veux limiter en desktop
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.close-btn {
+  align-self: flex-end;
+  margin: 0.5rem;
+}
+
 </style>

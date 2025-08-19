@@ -35,6 +35,7 @@ model User {
   moderationLogs           ModerationLog[]
   sentGroupInvitations     GroupInvitation[]        @relation("UserSentGroupInvitations")
   receivedGroupInvitations GroupInvitation[]        @relation("UserReceivedGroupInvitations")
+  messages                 Message[] 
 }
 
 model AccountSession {
@@ -63,6 +64,7 @@ model Group {
   prises      PriseGroup[]
   sessions    Session[]
   invitations GroupInvitation[]
+  messages    Message[] 
 
   @@index([createdAt])
   @@index([creatorId])
@@ -302,4 +304,26 @@ enum ModerationAction {
   mask
   delete
   ignore
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  // Préparation pour extension (V2)
+  referenceType MessageReferenceType? 
+  referenceId   String?
+
+  @@index([groupId, createdAt])
+}
+
+enum MessageReferenceType {
+  SPOT
+  PRISE
+  SESSION
 }
